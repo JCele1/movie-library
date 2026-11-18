@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Movie Check</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Movie Check: Never buy the same movie twice.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Movie Check">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f4f6fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#dbe1ec;--accent:#2563eb;--accent-text:#fff;
+--own-bg:#fee2e2;--own-fg:#991b1b;--own-line:#fca5a5;--new-bg:#dcfce7;--new-fg:#166534;--new-line:#86efac;--sim-bg:#fef3c7;--sim-fg:#92400e;--sim-line:#fcd34d;--shadow:0 1px 3px rgba(15,23,42,.12)}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#162033;--text:#e8edf7;--muted:#93a1b8;--line:#2a3750;--accent:#3b82f6;
+--own-bg:#4c1519;--own-fg:#fecaca;--own-line:#7f1d1d;--new-bg:#0f3a24;--new-fg:#bbf7d0;--new-line:#166534;--sim-bg:#46320a;--sim-fg:#fde68a;--sim-line:#854d0e;--shadow:none}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,Roboto,sans-serif}
+body{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;border-radius:14px;min-height:48px;padding:0 16px;background:var(--card);box-shadow:var(--shadow);border:1px solid var(--line)}
+button.primary{background:var(--accent);color:var(--accent-text);border-color:transparent;font-weight:600}
+button.danger{color:var(--own-fg);border-color:var(--own-line)}
+button:disabled{opacity:.5}
+header.top{position:sticky;top:0;z-index:20;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 14px 8px;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 10px;margin:0 2px 8px}
+.brand h1{font-size:22px;margin:0;letter-spacing:-.3px;white-space:nowrap}
+#q::-webkit-search-cancel-button,#q::-webkit-search-decoration{-webkit-appearance:none;display:none}
+.brand span{color:var(--muted);font-size:13px}
+.searchwrap{position:relative}
+#q{width:100%;height:56px;border-radius:16px;border:2px solid var(--line);background:var(--card);padding:0 48px 0 16px;font-size:18px;outline:none}
+#q:focus{border-color:var(--accent)}
+#qclear{position:absolute;right:6px;top:6px;width:44px;min-height:44px;height:44px;padding:0;border-radius:22px;border:0;box-shadow:none;background:transparent;color:var(--muted);font-size:22px;display:none}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;min-height:40px;padding:0 14px;border-radius:20px;font-size:15px;box-shadow:none}
+.chip.on{background:var(--accent);color:var(--accent-text);border-color:transparent}
+main{padding:12px 14px;max-width:760px;margin:0 auto}
+.banner{border-radius:16px;padding:14px 16px;margin-bottom:12px;border:2px solid;font-size:17px}
+.banner b{display:block;font-size:20px;margin-bottom:2px}
+.banner.own{background:var(--own-bg);color:var(--own-fg);border-color:var(--own-line)}
+.banner.new{background:var(--new-bg);color:var(--new-fg);border-color:var(--new-line)}
+.banner.sim{background:var(--sim-bg);color:var(--sim-fg);border-color:var(--sim-line)}
+.banner.info{background:var(--card);border-color:var(--line);color:var(--muted)}
+.banner .row{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.item{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;min-height:60px;width:100%;text-align:left;box-shadow:var(--shadow)}
+.item .t{flex:1;min-width:0}
+.item .t strong{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.item .t small{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{flex:0 0 auto;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:600;background:var(--line);color:var(--text)}
+.pill.f-Blu-ray{background:#dbeafe;color:#1e3a8a}.pill.f-DVD{background:#ede9fe;color:#4c1d95}.pill.f-4K{background:#fef3c7;color:#78350f}.pill.f-Digital{background:#d1fae5;color:#064e3b}
+.pill.own{background:var(--own-bg);color:var(--own-fg)}.pill.new{background:var(--new-bg);color:var(--new-fg)}
+.sechead{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 8px;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.rcard{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:10px;box-shadow:var(--shadow)}
+.rcard.owned{border-color:var(--own-line)}
+.poster{flex:0 0 64px;width:64px;height:96px;border-radius:8px;background:var(--line);object-fit:cover;display:block}
+.rbody{flex:1;min-width:0}
+.rbody strong{display:block;font-weight:600}
+.rbody .sub{color:var(--muted);font-size:14px}
+.rbody .ser{font-size:13px;color:var(--muted);margin-top:2px}
+.fchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.fchips button{min-height:40px;padding:0 12px;font-size:14px;border-radius:12px;box-shadow:none}
+.fchips button.has{background:var(--own-bg);color:var(--own-fg);border-color:var(--own-line)}
+.empty{text-align:center;color:var(--muted);padding:30px 10px}
+nav.bar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
+nav.bar button{flex:1;min-height:56px;font-size:16px;font-weight:600}
+.sheet{position:fixed;inset:0;z-index:50;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;padding:calc(12px + env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom))}
+.sheet.open{display:block}
+.sheet h2{margin:4px 0 12px;font-size:22px}
+.sheet .top{display:flex;align-items:center;justify-content:space-between}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 2px 4px;text-transform:uppercase;letter-spacing:.05em}
+input[type=text],input[type=url],input[type=number],input[type=search],input[type=password],select,textarea{width:100%;min-height:50px;border-radius:12px;border:2px solid var(--line);background:var(--card);padding:10px 12px;font-size:17px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{min-height:80px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btnrow{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btnrow>button{flex:1;min-width:130px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:4px 0 8px;color:var(--muted);font-size:14px}
+#reader{width:100%;min-height:260px;border-radius:14px;overflow:hidden;background:#000}
+#reader video{width:100%!important;object-fit:cover}
+#toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#111827;color:#fff;padding:12px 18px;border-radius:12px;z-index:100;display:none;max-width:90%;text-align:center}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}
+.muted{color:var(--muted);font-size:14px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><h1>🎬 Movie Check</h1><span>Never buy the same movie twice.</span></div>
+  <div class="searchwrap">
+    <input id="q" type="search" placeholder="Search your library or any movie title…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" aria-label="Search by title">
+    <button id="qclear" aria-label="Clear search">✕</button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+<main>
+  <div id="banner"></div>
+  <div id="list"></div>
+  <div id="online"></div>
+</main>
+<nav class="bar">
+  <button id="btnScan" class="primary">📷 Scan</button>
+  <button id="btnAdd">＋ Add</button>
+  <button id="btnData">⚙︎ Data</button>
+</nav>
+
+<!-- Add / Edit -->
+<div class="sheet" id="sheetEdit">
+  <div class="top"><h2 id="editTitle">Add to library</h2><button id="editClose" aria-label="Close">Close</button></div>
+  <div id="editDup"></div>
+  <label for="fTitle">Title</label><input id="fTitle" type="text" autocomplete="off">
+  <div class="two">
+    <div><label for="fYear">Year</label><input id="fYear" type="number" inputmode="numeric" min="1888" max="2100"></div>
+    <div><label for="fFormat">Format</label><select id="fFormat"></select></div>
+  </div>
+  <label for="fUpc">UPC / barcode</label><input id="fUpc" type="text" inputmode="numeric" autocomplete="off">
+  <label for="fNotes">Notes</label><textarea id="fNotes"></textarea>
+  <div class="btnrow">
+    <button id="editSave" class="primary">Save</button>
+    <button id="editDelete" class="danger">Delete</button>
+  </div>
+</div>
+
+<!-- Scan -->
+<div class="sheet" id="sheetScan">
+  <div class="top"><h2>Scan a barcode</h2><button id="scanClose">Close</button></div>
+  <div id="reader"></div>
+  <p class="muted" id="scanHint">Point the back camera at the UPC on the case. Needs HTTPS and camera permission.</p>
+  <div class="card">
+    <h3>Or type the UPC</h3>
+    <div class="two"><input id="manualUpc" type="text" inputmode="numeric" placeholder="e.g. 883929244508"><button id="manualGo" class="primary">Check</button></div>
+  </div>
+  <div id="scanResult"></div>
+</div>
+
+<!-- Data -->
+<div class="sheet" id="sheetData">
+  <div class="top"><h2>Data</h2><button id="dataClose">Done</button></div>
+  <div class="card">
+    <h3>Import a spreadsheet</h3>
+    <p>CSV or XLSX. Columns are detected automatically (Title/Movie/Name, Year, Format/Type, UPC/Barcode/EAN, Notes). Existing entries are merged, never duplicated.</p>
+    <input id="file" type="file" accept=".csv,.txt,.xlsx,.xls,text/csv" style="display:none">
+    <div class="btnrow" style="margin-top:6px"><button id="btnFile" class="primary">Choose file…</button><a href="template.csv" download><button type="button" style="width:100%">Template CSV</button></a></div>
+    <div id="importMsg" class="muted" style="margin-top:8px"></div>
+    <div class="btnrow" style="margin-top:6px"><button id="btnUndo">Undo last import</button></div>
+  </div>
+  <div class="card">
+    <h3>Google Sheet link</h3>
+    <p>In Google Sheets: File → Share → Publish to web → choose your sheet and “Comma-separated values (.csv)” → Publish, then paste the link here.</p>
+    <input id="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv" autocapitalize="none" autocorrect="off">
+    <div class="btnrow"><button id="btnSaveSheet">Save link</button><button id="btnRefresh" class="primary">Refresh from sheet</button></div>
+    <div id="sheetMsg" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h3>Backup</h3>
+    <div class="btnrow" style="margin-top:6px"><button id="btnExport" class="primary">Export CSV</button><button id="btnCopy">Copy CSV</button></div>
+    <p id="storeMsg" style="margin-top:10px"></p>
+  </div>
+  <div class="card">
+    <h3>Online lookups (optional)</h3>
+    <p>Title search works with no setup. For richer results with series names, paste a free TMDB API key (themoviedb.org → Settings → API).</p>
+    <label for="tmdbKey">TMDB API key (v3)</label><input id="tmdbKey" type="password" autocomplete="off" autocapitalize="none">
+    <label for="proxyUrl">Barcode lookup proxy (advanced)</label><input id="proxyUrl" type="url" placeholder="https://your-worker.example.workers.dev/?url=" autocapitalize="none">
+    <div class="btnrow"><button id="btnSaveSettings">Save settings</button></div>
+  </div>
+  <div class="card">
+    <h3>Danger zone</h3>
+    <div class="btnrow" style="margin-top:6px"><button id="btnWipe" class="danger">Delete entire library</button></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+/* ---------- constants & storage ---------- */
+var FORMATS=['Blu-ray','4K UHD','DVD','Digital'];
+var ALL_FORMATS=FORMATS.concat(['Other']);
+var K_ITEMS='mc_items_v1',K_SET='mc_settings_v1',K_BACKUP='mc_backup_v1',K_UPC='mc_upc_cache_v1';
+var CDN={qr:'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',xlsx:'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'};
+var db={items:[],settings:{}};
+function ls(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){toast('Could not save: storage full or blocked');return false}}
+function load(){db.items=ls(K_ITEMS,[]);db.settings=ls(K_SET,{})}
+function saveItems(){lsSet(K_ITEMS,db.items)}
+function saveSettings(){lsSet(K_SET,db.settings)}
+function uid(){return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function nowIso(){return new Date().toISOString()}
+
+/* ---------- normalization & matching ---------- */
+function norm(s){
+  s=String(s==null?'':s).toLowerCase().replace(/,\s*the\s*$/,'');
+  try{s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')}catch(e){}
+  s=s.replace(/&/g,' and ').replace(/['’`]/g,'').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+  s=s.replace(/^the\s+(?=\S)/,'');
+  return s;
+}
+function lev(a,b){ /* Damerau-Levenshtein (optimal string alignment): adjacent swaps cost 1 */
+  if(a===b)return 0;var m=a.length,n=b.length;if(!m)return n;if(!n)return m;
+  var d=[],i,j;
+  for(i=0;i<=m;i++){d[i]=[i]}for(j=1;j<=n;j++)d[0][j]=j;
+  for(i=1;i<=m;i++)for(j=1;j<=n;j++){
+    var c=a.charCodeAt(i-1)===b.charCodeAt(j-1)?0:1;
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);
+    if(i>1&&j>1&&a.charCodeAt(i-1)===b.charCodeAt(j-2)&&a.charCodeAt(i-2)===b.charCodeAt(j-1))d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1);
+  }
+  return d[m][n];
+}
+function sim(a,b){var L=Math.max(a.length,b.length);return L?1-lev(a,b)/L:1}
+function toks(s){return s?s.split(' '):[]}
+var STRONG=0.88;
+/* score(queryNorm, titleNorm): 1 exact; >=0.88 "same title"; lower = similar/partial */
+function score(q,t){
+  if(!q||!t)return 0;
+  if(q===t)return 1;
+  var s=sim(q,t);
+  if(q.length>=4&&t.length>=4&&s>=STRONG)return s;
+  var qt=toks(q),tt=toks(t);
+  if(qt.length>1&&qt.slice().sort().join(' ')===tt.slice().sort().join(' '))return .95;
+  if(t.indexOf(q)===0)return Math.min(.85,.6+.3*(q.length/t.length));
+  var allPre=qt.every(function(x){return tt.some(function(y){return y.indexOf(x)===0})});
+  if(allPre)return .5+.3*Math.min(1,qt.join('').length/Math.max(1,tt.join('').length));
+  var fz=qt.every(function(x){return tt.some(function(y){return x.length>=4&&y.length>=4&&lev(x,y)<=1})});
+  if(fz)return .45;
+  if(s>=.7)return .4+(s-.7)*.5;
+  return 0;
+}
+function normUpc(u){var d=String(u==null?'':u).replace(/\D/g,'');return d.replace(/^0+/,'')}
+function cleanUpc(u){u=String(u==null?'':u).trim();if(/e\+/i.test(u))return'';var d=u.replace(/\D/g,'');return d.length>=6?d:''}
+function upcEq(a,b){var x=normUpc(a),y=normUpc(b);return !!x&&x===y}
+function normFormat(s){
+  var t=String(s==null?'':s).toLowerCase().replace(/[^a-z0-9+]/g,'');
+  if(!t)return'';
+  if(/4k|uhd|ultrahd/.test(t))return'4K UHD';
+  if(/blu|^bd$|^br$/.test(t))return'Blu-ray';
+  if(/dvd/.test(t))return'DVD';
+  if(/digital|itunes|vudu|moviesanywhere|ultraviolet|^uv$|plex|appletv|prime/.test(t))return'Digital';
+  return'Other';
+}
+function fmtClass(f){return f==='4K UHD'?'f-4K':'f-'+f}
+function searchLocal(query,formatFilter){
+  var q=norm(query),out=[];
+  db.items.forEach(function(it){
+    if(formatFilter&&formatFilter!=='All'&&it.format!==formatFilter)return;
+    var sc=0;
+    if(q){sc=score(q,norm(it.title));var qu=normUpc(query);if(qu&&/^\d{6,}$/.test(String(query).trim())&&upcEq(query,it.upc))sc=1}
+    else sc=1;
+    if(sc>0)out.push({item:it,score:sc});
+  });
+  if(q)out.sort(function(a,b){return b.score-a.score||norm(a.item.title).localeCompare(norm(b.item.title))});
+  else out.sort(function(a,b){return norm(a.item.title).localeCompare(norm(b.item.title))});
+  return out;
+}
+/* is title (+year) owned? exact = same title (and year if both known); other = same title different year */
+function ownedFor(title,year){
+  var n=norm(title),exact=[],other=[];
+  if(!n)return{exact:exact,other:other};
+  db.items.forEach(function(it){
+    var s=score(n,norm(it.title));
+    if(s<STRONG)return;
+    var y1=parseInt(year,10),y2=parseInt(it.year,10);
+    if(y1&&y2&&Math.abs(y1-y2)>1)other.push(it);else exact.push(it);
+  });
+  return{exact:exact,other:other};
+}
+function seriesOf(title){
+  var t=String(title||'').trim();
+  var seg=t.split(/\s*[:\u2013\u2014]\s+|\s+-\s+/)[0];
+  seg=seg.replace(/\s+(\d+|ii|iii|iv|v|vi|vii|viii|ix|x|part\s+\w+|chapter\s+\w+)$/i,'').trim();
+  var key=norm(seg);
+  return key.length>=3?{name:seg,key:key}:null;
+}
+function siblings(series,title,year){
+  if(!series)return[];
+  var self=norm(title);
+  return db.items.filter(function(it){
+    var n=norm(it.title);
+    if(n===self)return false;
+    return n===series.key||n.indexOf(series.key+' ')===0;
+  });
+}
+function findByUpc(u){var n=normUpc(u);if(!n)return null;for(var i=0;i<db.items.length;i++)if(normUpc(db.items[i].upc)===n)return db.items[i];return null}
+
+/* ---------- CSV ---------- */
+function parseCSV(text){
+  if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);
+  var first=text.split(/\r?\n/)[0]||'';
+  var cnt=function(c){return first.split(c).length-1};
+  var d=',';
+  if(cnt(';')>cnt(',')&&cnt(';')>=cnt('\t'))d=';';
+  if(cnt('\t')>cnt(',')&&cnt('\t')>cnt(';'))d='\t';
+  var rows=[],row=[],f='',q=false,i,c;
+  for(i=0;i<text.length;i++){
+    c=text[i];
+    if(q){
+      if(c==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=c;
+    }else if(c==='"'&&f===''){q=true}
+    else if(c===d){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(f);f='';rows.push(row);row=[]}
+    else f+=c;
+  }
+  if(f!==''||row.length){row.push(f);rows.push(row)}
+  return rows.filter(function(r){return r.some(function(x){return String(x).trim()!==''})});
+}
+function csvEscape(v){v=String(v==null?'':v);return '"'+v.replace(/"/g,'""')+'"'}
+function toCSV(items){
+  var lines=[['Title','Year','Format','UPC','Notes','Date Added'].map(csvEscape).join(',')];
+  items.forEach(function(it){lines.push([it.title,it.year,it.format,it.upc,it.notes,it.dateAdded].map(csvEscape).join(','))});
+  return lines.join('\r\n')+'\r\n';
+}
+var HDR={
+  title:['title','movie','movietitle','name','moviename','film','filmtitle'],
+  year:['year','releaseyear','released','yr','releasedate'],
+  format:['format','type','media','mediatype','disc','discformat','medium'],
+  upc:['upc','barcode','ean','upccode','gtin','upcean','upca','barcodenumber'],
+  notes:['notes','note','comments','comment','remarks'],
+  date:['dateadded','added','addedon','date','created']
+};
+function detectColumns(header){
+  var keys=header.map(function(h){return String(h==null?'':h).toLowerCase().replace(/[^a-z0-9]/g,'')});
+  var map={},used={};
+  Object.keys(HDR).forEach(function(f){
+    for(var i=0;i<keys.length;i++)if(!used[i]&&HDR[f].indexOf(keys[i])>=0){map[f]=i;used[i]=1;return}
+  });
+  var subs={title:'title',year:'year',format:'format',upc:'upc',notes:'note'};
+  Object.keys(subs).forEach(function(f){
+    if(map[f]!==undefined)return;
+    for(var i=0;i<keys.length;i++)if(!used[i]&&keys[i].indexOf(subs[f])>=0){map[f]=i;used[i]=1;return}
+  });
+  return map;
+}
+function rowsFromTable(table){
+  if(!table.length)return{rows:[],cols:{},headerless:false};
+  var cols=detectColumns(table[0]),start=1,headerless=false;
+  if(!Object.keys(cols).length){cols={title:0,year:1,format:2,upc:3,notes:4};start=0;headerless=true}
+  else if(cols.title===undefined){
+    var used=Object.keys(cols).map(function(k){return cols[k]});
+    for(var i=0;i<table[0].length;i++)if(used.indexOf(i)<0){cols.title=i;break}
+    if(cols.title===undefined)cols.title=0;
+  }
+  var rows=[];
+  for(var r=start;r<table.length;r++){
+    var x=table[r],g=function(k){return cols[k]===undefined?'':String(x[cols[k]]==null?'':x[cols[k]]).trim()};
+    var ym=g('year').match(/\b(18|19|20)\d{2}\b/);
+    var d=g('date'),dt='';if(d){var p=new Date(d);if(!isNaN(p))dt=p.toISOString()}
+    rows.push({title:g('title'),year:ym?ym[0]:'',format:normFormat(g('format')),upc:cleanUpc(g('upc')),notes:g('notes'),dateAdded:dt});
+  }
+  return{rows:rows,cols:cols,headerless:headerless};
+}
+/* merge: match by UPC; otherwise by normalized title+format. Returns counts and mutates list. */
+function mergeRows(items,rows){
+  var upcMap={},tfMap={},res={added:0,updated:0,skipped:0};
+  function key(it){return norm(it.title)+'|'+(it.format||'Other')}
+  items.forEach(function(it){var u=normUpc(it.upc);if(u)upcMap[u]=it;tfMap[key(it)]=it});
+  rows.forEach(function(r){
+    if(!r.title&&!r.upc){res.skipped++;return}
+    var fmt=r.format||'Other',u=normUpc(r.upc),hit=null;
+    if(u&&upcMap[u])hit=upcMap[u];
+    else{
+      var cand=tfMap[norm(r.title)+'|'+fmt];
+      if(cand&&r.title&&(!normUpc(cand.upc)||!u))hit=cand; // different UPC = different edition
+    }
+    if(hit){
+      var changed=false;
+      if(r.title&&hit.title!==r.title&&!hit.title){hit.title=r.title;changed=true}
+      [['year','year'],['notes','notes']].forEach(function(p){if(r[p[0]]&&hit[p[1]]!==r[p[0]]){hit[p[1]]=r[p[0]];changed=true}});
+      if(r.format&&hit.format!==r.format){hit.format=r.format;changed=true}
+      if(u&&!normUpc(hit.upc)){hit.upc=r.upc;changed=true;upcMap[u]=hit}
+      if(changed)res.updated++;else res.skipped++;
+      return;
+    }
+    var it={id:uid(),title:r.title||('UPC '+r.upc),year:r.year||'',format:fmt,upc:r.upc||'',notes:r.notes||'',dateAdded:r.dateAdded||nowIso()};
+    items.push(it);if(u)upcMap[u]=it;tfMap[key(it)]=it;res.added++;
+  });
+  return res;
+}
+
+/* ---------- DOM helpers ---------- */
+function $(id){return document.getElementById(id)}
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function clear(n){while(n.firstChild)n.removeChild(n.firstChild)}
+var toastT;
+function toast(msg){var t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(function(){t.style.display='none'},2800)}
+function openSheet(id){$(id).classList.add('open');$(id).scrollTop=0}
+function closeSheet(id){$(id).classList.remove('open')}
+function fmtList(items){var s=[];items.forEach(function(i){if(s.indexOf(i.format)<0)s.push(i.format)});return s.join(', ')}
+
+/* ---------- library list ---------- */
+var state={q:'',filter:'All',onlineTok:0,onlineT:null};
+function renderChips(){
+  var c=$('chips');clear(c);
+  ['All'].concat(FORMATS).forEach(function(f){
+    var b=el('button','chip'+(state.filter===f?' on':''),f);
+    b.onclick=function(){state.filter=f;render()};c.appendChild(b);
+  });
+}
+function banner(cls,title,body){var b=el('div','banner '+cls);b.appendChild(el('b',null,title));if(body)b.appendChild(el('div',null,body));return b}
+function render(){
+  renderChips();
+  var q=state.q.trim(),B=$('banner'),L=$('list');clear(B);clear(L);
+  var res=searchLocal(q,state.filter);
+  if(!q){
+    B.appendChild(banner('info',db.items.length+' title'+(db.items.length===1?'':'s')+' in your library','Type a title above to check if you already own it, or search any movie online.'));
+  }else{
+    var strong=res.filter(function(r){return r.score>=STRONG}),partial=res.filter(function(r){return r.score<STRONG});
+    if(strong.length){
+      var b=banner('own','You already own this ('+fmtList(strong.map(function(r){return r.item}))+')',strong.map(function(r){return r.item.title+(r.item.year?' ('+r.item.year+')':'')}).slice(0,3).join(' · '));
+      B.appendChild(b);
+    }else if(partial.length){
+      B.appendChild(banner('sim','Not an exact match — similar titles you own',partial.length+' similar title'+(partial.length===1?'':'s')+' below. Check them before buying.'));
+    }else{
+      var nb=banner('new','Not in your library','No match for “'+q+'”.');
+      var row=el('div','row'),add=el('button','primary','＋ Add “'+q.slice(0,30)+'”');add.onclick=function(){openEdit(null,{title:q})};row.appendChild(add);nb.appendChild(row);B.appendChild(nb);
+    }
+  }
+  var cap=300;
+  res.slice(0,cap).forEach(function(r){L.appendChild(itemRow(r.item,q&&r.score<STRONG))});
+  if(res.length>cap)L.appendChild(el('div','empty','Showing first '+cap+' of '+res.length+'. Search to narrow down.'));
+  if(!res.length&&!q)L.appendChild(el('div','empty','Your library is empty. Tap Add, Scan, or import a spreadsheet in Data.'));
+  scheduleOnline();
+}
+function itemRow(it,similar){
+  var b=el('button','item');
+  var t=el('div','t');t.appendChild(el('strong',null,it.title+(it.year?' ('+it.year+')':'')));
+  var sub=[];if(it.upc)sub.push(it.upc);if(it.notes)sub.push(it.notes);
+  if(similar)sub.unshift('similar title');
+  if(sub.length)t.appendChild(el('small',null,sub.join(' · ')));
+  b.appendChild(t);b.appendChild(el('span','pill '+fmtClass(it.format),it.format));
+  b.onclick=function(){openEdit(it)};return b;
+}
+
+/* ---------- add / edit ---------- */
+var editing=null;
+function openEdit(it,prefill){
+  editing=it||null;
+  var sel=$('fFormat');clear(sel);ALL_FORMATS.forEach(function(f){var o=el('option',null,f);o.value=f;sel.appendChild(o)});
+  var p=it||prefill||{};
+  $('editTitle').textContent=it?'Edit entry':'Add to library';
+  $('fTitle').value=p.title||'';$('fYear').value=p.year||'';sel.value=p.format||'Blu-ray';$('fUpc').value=p.upc||'';$('fNotes').value=p.notes||'';
+  $('editDelete').style.display=it?'':'none';clear($('editDup'));
+  openSheet('sheetEdit');
+}
+function saveEdit(force){
+  var title=$('fTitle').value.trim();
+  if(!title){toast('Enter a title');return}
+  var rec={title:title,year:$('fYear').value.trim(),format:$('fFormat').value,upc:cleanUpc($('fUpc').value)||$('fUpc').value.replace(/\D/g,''),notes:$('fNotes').value.trim()};
+  if(editing){Object.keys(rec).forEach(function(k){editing[k]=rec[k]});saveItems();closeSheet('sheetEdit');toast('Saved');render();return}
+  var dup=db.items.filter(function(i){return (rec.upc&&upcEq(i.upc,rec.upc))||(norm(i.title)===norm(rec.title)&&i.format===rec.format)});
+  if(dup.length&&!force){
+    var d=$('editDup');clear(d);
+    var b=banner('own','You already own this ('+dup[0].format+')',dup[0].title);
+    var row=el('div','row'),go=el('button','primary','Add anyway');go.onclick=function(){saveEdit(true)};row.appendChild(go);b.appendChild(row);d.appendChild(b);
+    $('sheetEdit').scrollTop=0;return;
+  }
+  rec.id=uid();rec.dateAdded=nowIso();db.items.push(rec);saveItems();closeSheet('sheetEdit');toast('Added to library');render();
+}
+function addItem(rec){
+  var it={id:uid(),title:rec.title,year:rec.year||'',format:rec.format||'Blu-ray',upc:rec.upc||'',notes:rec.notes||'',dateAdded:nowIso()};
+  db.items.push(it);saveItems();return it;
+}
+
+/* ---------- online title search ---------- */
+function jsonp(url,cb){
+  return new Promise(function(res,rej){
+    var s=document.createElement('script'),done=false;
+    function fin(){done=true;clearTimeout(t);try{delete window[cb]}catch(e){window[cb]=undefined}s.remove()}
+    var t=setTimeout(function(){if(!done){fin();rej(new Error('timeout'))}},8000);
+    window[cb]=function(d){if(!done){fin();res(d)}};
+    s.onerror=function(){if(!done){fin();rej(new Error('network'))}};
+    s.src=url;document.head.appendChild(s);
+  });
+}
+function fetchJson(url,ms){
+  var ctl=window.AbortController?new AbortController():null,t=setTimeout(function(){ctl&&ctl.abort()},ms||8000);
+  return fetch(url,ctl?{signal:ctl.signal}:{}).then(function(r){clearTimeout(t);if(!r.ok){var e=new Error('http '+r.status);e.status=r.status;throw e}return r.json()},function(e){clearTimeout(t);throw e});
+}
+function imdbThumb(u){
+  if(!u)return'';
+  if(/\._V1_.*\.jpg$/.test(u))return u.replace(/\._V1_.*\.jpg$/,'._V1_UX128_.jpg');
+  return u.replace(/\.jpg$/,'._V1_UX128_.jpg');
+}
+var Providers={
+  tmdb:function(q,key){
+    return fetchJson('https://api.themoviedb.org/3/search/movie?include_adult=false&api_key='+encodeURIComponent(key)+'&query='+encodeURIComponent(q)).then(function(d){
+      return (d.results||[]).slice(0,12).map(function(r){return{title:r.title,year:(r.release_date||'').slice(0,4),poster:r.poster_path?'https://image.tmdb.org/t/p/w185'+r.poster_path:'',type:'',tmdbId:r.id,src:'TMDB'}});
+    });
+  },
+  imdb:function(q){
+    var s=norm(q).replace(/ /g,'_').slice(0,60);
+    if(!s)return Promise.resolve([]);
+    return jsonp('https://sg.media-imdb.com/suggests/'+s.charAt(0)+'/'+s+'.json','imdb$'+s).then(function(d){
+      return (d.d||[]).filter(function(r){return /^tt/.test(r.id||'')&&r.l}).slice(0,12).map(function(r){
+        var img=r.i&&(Array.isArray(r.i)?r.i[0]:r.i.imageUrl);
+        var type=r.qid==='movie'?'':(r.q||r.qid||'');
+        return{title:r.l,year:r.y?String(r.y):'',poster:imdbThumb(img),type:type,src:'IMDb'};
+      });
+    });
+  },
+  itunes:function(q){
+    return fetchJson('https://itunes.apple.com/search?media=movie&entity=movie&limit=12&term='+encodeURIComponent(q)).then(function(d){
+      return (d.results||[]).map(function(r){return{title:r.trackName,year:(r.releaseDate||'').slice(0,4),poster:r.artworkUrl100||'',type:'',series:(r.collectionName||'').replace(/\s+Collection$/i,''),src:'iTunes'}});
+    });
+  }
+};
+function onlineSearch(q){
+  var chain=[];
+  if(db.settings.tmdbKey)chain.push(function(){return Providers.tmdb(q,db.settings.tmdbKey)});
+  chain.push(function(){return Providers.imdb(q)});
+  chain.push(function(){return Providers.itunes(q)});
+  var errs=0;
+  return chain.reduce(function(p,fn){
+    return p.then(function(r){if(r&&r.length)return r;return fn().catch(function(){errs++;return[]})});
+  },Promise.resolve([])).then(function(r){return{results:r,errors:errs}});
+}
+function scheduleOnline(){
+  clearTimeout(state.onlineT);
+  var q=state.q.trim(),box=$('online'),tok=++state.onlineTok;
+  clear(box);
+  if(q.length<2)return;
+  if(!navigator.onLine){box.appendChild(el('div','empty','Offline: online title search needs a connection. Your library search above still works.'));return}
+  var head=el('div','sechead');head.appendChild(el('span',null,'Search online'));box.appendChild(head);
+  var st=el('div','muted');st.innerHTML='<span class="spin"></span>Searching…';box.appendChild(st);
+  state.onlineT=setTimeout(function(){
+    onlineSearch(q).then(function(o){
+      if(tok!==state.onlineTok)return;
+      clear(box);var h=el('div','sechead');h.appendChild(el('span',null,'Online results for “'+q+'”'));box.appendChild(h);
+      if(!o.results.length){box.appendChild(el('div','empty',o.errors?'Couldn’t reach the online movie search. Check your connection, or add the title manually.':'No online matches. Try different spelling, or add it manually.'));return}
+      o.results.forEach(function(r){box.appendChild(resultCard(r))});
+      box.appendChild(el('div','muted','Results from '+o.results[0].src+'.'));
+      if(db.settings.tmdbKey&&o.results[0].src==='TMDB')loadCollections(o.results.slice(0,8),box,tok);
+    });
+  },450);
+}
+function loadCollections(rs,box,tok){
+  rs.forEach(function(r){
+    if(!r.tmdbId||r.series!==undefined)return;
+    fetchJson('https://api.themoviedb.org/3/movie/'+r.tmdbId+'?api_key='+encodeURIComponent(db.settings.tmdbKey)).then(function(d){
+      if(tok!==state.onlineTok)return;
+      r.series=d.belongs_to_collection?d.belongs_to_collection.name.replace(/\s+Collection$/i,''):'';
+      if(r._serEl)fillSeries(r);
+    }).catch(function(){});
+  });
+}
+function fillSeries(r){
+  var e=r._serEl;if(!e)return;e.textContent='';
+  var s=r.series?{name:r.series,key:norm(r.series)}:seriesOf(r.title);
+  if(!s)return;
+  var sib=siblings(s,r.title,r.year);
+  if(r.series||sib.length){
+    e.textContent='Series: '+s.name+(sib.length?' · you own '+sib.length+' other'+(sib.length===1?'':'s')+': '+sib.slice(0,3).map(function(i){return i.title+' ('+i.format+')'}).join(', ')+(sib.length>3?'…':''):' · none of the others owned');
+  }
+}
+function resultCard(r){
+  var o=ownedFor(r.title,r.year),owned=o.exact.length>0;
+  var card=el('div','rcard'+(owned?' owned':''));
+  var img=el('img','poster');img.alt='';img.loading='lazy';img.referrerPolicy='no-referrer';
+  if(r.poster)img.src=r.poster;img.onerror=function(){img.removeAttribute('src')};
+  card.appendChild(img);
+  var body=el('div','rbody');
+  body.appendChild(el('strong',null,r.title));
+  body.appendChild(el('div','sub',[r.year,r.type].filter(Boolean).join(' · ')));
+  var pill=owned?el('span','pill own','Owned ('+fmtList(o.exact)+')'):el('span','pill new','Not owned');
+  var pr=el('div',null);pr.style.margin='6px 0 0';pr.appendChild(pill);body.appendChild(pr);
+  if(!owned&&o.other.length)body.appendChild(el('div','ser','You own a different “'+o.other[0].title+'”'+(o.other[0].year?' ('+o.other[0].year+')':'')+' ('+o.other[0].format+')'));
+  var ser=el('div','ser');r._serEl=ser;body.appendChild(ser);fillSeries(r);
+  var fc=el('div','fchips');
+  FORMATS.forEach(function(f){
+    var has=o.exact.some(function(i){return i.format===f});
+    var b=el('button',has?'has':'',has?'✓ '+f:'+ '+f);
+    b.disabled=has;
+    b.onclick=function(){addItem({title:r.title,year:r.year,format:f});toast('Added '+r.title+' ('+f+')');render()};
+    fc.appendChild(b);
+  });
+  body.appendChild(fc);card.appendChild(body);return card;
+}
+
+/* ---------- scripts ---------- */
+var loaded={};
+function loadScript(name,local,cdn,check){
+  if(check())return Promise.resolve();
+  if(loaded[name])return loaded[name];
+  function tryUrl(u){return new Promise(function(res,rej){var s=document.createElement('script');s.src=u;s.onload=res;s.onerror=function(){s.remove();rej(new Error('load '+u))};document.head.appendChild(s)})}
+  loaded[name]=tryUrl(local).catch(function(){return tryUrl(cdn)}).then(function(){if(!check())throw new Error('library missing')}).catch(function(e){delete loaded[name];throw e});
+  return loaded[name];
+}
+function needQR(){return loadScript('qr','lib/html5-qrcode.min.js',CDN.qr,function(){return !!window.Html5Qrcode})}
+function needXLSX(){return loadScript('xlsx','lib/xlsx.full.min.js',CDN.xlsx,function(){return !!window.XLSX})}
+
+/* ---------- scanning ---------- */
+var scanner=null,scanning=false;
+function setScanHint(t){$('scanHint').textContent=t}
+function startScan(){
+  clear($('scanResult'));
+  openSheet('sheetScan');
+  if(!window.isSecureContext&&location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'){setScanHint('The camera needs a secure (HTTPS) page. You can still type the UPC below.');return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){setScanHint('This browser has no camera access. Type the UPC below.');return}
+  setScanHint('Starting camera…');
+  needQR().then(function(){
+    var Q=window.Html5Qrcode,F=window.Html5QrcodeSupportedFormats;
+    scanner=new Q('reader',{formatsToSupport:[F.UPC_A,F.UPC_E,F.EAN_13,F.EAN_8],verbose:false});
+    return scanner.start({facingMode:'environment'},{fps:10,qrbox:function(w,h){return{width:Math.floor(w*.85),height:Math.floor(Math.min(h,w)*.4)}}},
+      function(text){onScanned(text)},function(){}).then(function(){scanning=true;setScanHint('Point the back camera at the UPC barcode on the case.')});
+  }).catch(function(e){
+    scanning=false;
+    var m=String(e&&e.name||e&&e.message||e);
+    if(/NotAllowed|Permission/i.test(m))setScanHint('Camera permission was denied. On iPhone: Settings → Safari → Camera → Ask/Allow (or for the Home Screen app, allow when asked). You can type the UPC below.');
+    else if(/NotFound|Devices/i.test(m))setScanHint('No camera found. Type the UPC below.');
+    else if(/load|library/i.test(m))setScanHint('Couldn’t load the scanner library (offline?). Type the UPC below.');
+    else setScanHint('Couldn’t start the camera ('+m+'). Type the UPC below.');
+  });
+}
+function stopScan(){
+  var s=scanner;scanner=null;
+  if(!s||!scanning){scanning=false;return Promise.resolve()}
+  scanning=false;
+  return s.stop().then(function(){try{s.clear()}catch(e){}},function(){});
+}
+function onScanned(text){
+  if(!scanning)return;
+  if(navigator.vibrate)try{navigator.vibrate(60)}catch(e){}
+  stopScan().then(function(){checkUpc(text)});
+}
+function cleanTitle(raw){
+  var t=String(raw||'');
+  t=t.replace(/\s*[\[(][^\])]*(blu-?ray|dvd|4k|uhd|ultra\s*hd|digital|combo|steelbook|widescreen|special edition|collector)[^\])]*[\])]/gi,'');
+  t=t.replace(/\s*[-–:,]?\s*(4k\s*ultra\s*hd|ultra\s*hd|4k\s*uhd|blu-?ray|dvd)(\s*\+\s*(blu-?ray|dvd|digital)( copy)?)*\s*$/gi,'');
+  return t.replace(/\s{2,}/g,' ').trim();
+}
+function guessFormat(raw){
+  var t=String(raw||'').toLowerCase();
+  if(/4k|uhd|ultra\s*hd/.test(t))return'4K UHD';
+  if(/blu-?ray/.test(t))return'Blu-ray';
+  if(/dvd/.test(t))return'DVD';
+  return'Blu-ray';
+}
+function lookupUpc(upc){
+  var cache=ls(K_UPC,{}),c=cache[upc];
+  if(c)return Promise.resolve(c);
+  var base='https://api.upcitemdb.com/prod/trial/lookup?upc='+encodeURIComponent(upc);
+  var attempts=[];
+  if(db.settings.proxyUrl)attempts.push(function(){return fetchJson(db.settings.proxyUrl+encodeURIComponent(base),10000)});
+  attempts.push(function(){return fetchJson(base,8000)}); // works only if the API allows this origin
+  attempts.push(function(){return fetchJson('https://api.allorigins.win/get?url='+encodeURIComponent(base),10000).then(function(d){return JSON.parse(d.contents)})});
+  var last=null;
+  return attempts.reduce(function(p,fn){
+    return p.then(function(r){if(r)return r;return fn().then(function(d){
+      if(d&&d.code==='OK'&&d.items&&d.items.length)return d;
+      if(d&&d.code==='EXCEED_LIMIT'){last=new Error('limit');return null}
+      if(d&&d.code==='OK'){last=new Error('notfound');return null}
+      last=new Error('bad response');return null;
+    },function(e){last=last&&last.message==='limit'?last:e;return null})});
+  },Promise.resolve(null)).then(function(d){
+    if(!d){var err=new Error(last&&last.message||'failed');err.reason=last&&last.message;throw err}
+    var it=d.items[0],out={title:cleanTitle(it.title),raw:it.title,format:guessFormat(it.title),year:((String(it.title).match(/\((\d{4})\)/)||[])[1])||''};
+    cache[upc]=out;lsSet(K_UPC,cache);return out;
+  });
+}
+function checkUpc(text){
+  var upc=String(text).replace(/\D/g,''),R=$('scanResult');clear(R);
+  if(upc.length<6){R.appendChild(banner('sim','That doesn’t look like a UPC','Try again or type the number.'));return}
+  var own=findByUpc(upc);
+  if(own){
+    var b=banner('own','Already owned ('+own.format+')',own.title+(own.year?' ('+own.year+')':'')+' · '+upc);
+    var row=el('div','row'),again=el('button','primary','Scan another'),ed=el('button',null,'View entry');
+    again.onclick=startScan;ed.onclick=function(){closeSheet('sheetScan');openEdit(own)};row.appendChild(again);row.appendChild(ed);b.appendChild(row);R.appendChild(b);return;
+  }
+  var nb=banner('new','Not in library',upc+' · looking up title…');R.appendChild(nb);
+  var again2=el('div','row'),a2=el('button',null,'Scan another');a2.onclick=startScan;again2.appendChild(a2);
+  lookupUpc(upc).then(function(info){
+    clear(R);R.appendChild(banner('new','Not in library','UPC '+upc));
+    scanForm(R,upc,info,null);
+  },function(err){
+    clear(R);
+    var why={limit:'The free barcode lookup is out of requests for now (the trial allows about 100 per day).',notfound:'That barcode isn’t in the free lookup database.'}[err.reason]||'The online barcode lookup couldn’t be reached from the browser.';
+    R.appendChild(banner('new','Not in library','UPC '+upc));
+    scanForm(R,upc,{title:'',format:'Blu-ray',year:''},why+' Type the title, or search for it by name.');
+  });
+}
+function scanForm(R,upc,info,msg){
+  var card=el('div','card');
+  if(msg)card.appendChild(el('p',null,msg));
+  card.appendChild(el('h3',null,info.title?'Add to library':'Add this disc'));
+  var lt=el('label',null,'Title'),ti=el('input');ti.type='text';ti.value=info.title||'';ti.placeholder='Movie title';
+  var warn=el('div');
+  function chk(){clear(warn);var o=ownedFor(ti.value,info.year);if(ti.value.trim()&&o.exact.length){warn.appendChild(banner('own','You already own a title like this ('+fmtList(o.exact)+')',o.exact[0].title+' — this may be a different edition, so check before adding.'))}}
+  ti.oninput=chk;
+  card.appendChild(lt);card.appendChild(ti);card.appendChild(warn);
+  var two=el('div','two'),yw=el('div'),fw=el('div');
+  var yl=el('label',null,'Year'),yi=el('input');yi.type='number';yi.inputMode='numeric';yi.value=info.year||'';
+  var fl=el('label',null,'Format'),fs=el('select');ALL_FORMATS.forEach(function(f){var o=el('option',null,f);o.value=f;fs.appendChild(o)});fs.value=info.format||'Blu-ray';
+  yw.appendChild(yl);yw.appendChild(yi);fw.appendChild(fl);fw.appendChild(fs);two.appendChild(yw);two.appendChild(fw);card.appendChild(two);
+  var row=el('div','btnrow'),add=el('button','primary','Add to library'),srch=el('button',null,'Search by title'),again=el('button',null,'Scan another');
+  add.onclick=function(){
+    var t=ti.value.trim();if(!t){toast('Enter a title');ti.focus();return}
+    addItem({title:t,year:yi.value.trim(),format:fs.value,upc:upc});toast('Added to library');render();
+    clear(R);R.appendChild(banner('own','Added','Now owned: '+t+' ('+fs.value+')'));var r2=el('div','btnrow'),a=el('button','primary','Scan another');a.onclick=startScan;r2.appendChild(a);R.appendChild(r2);
+  };
+  srch.onclick=function(){closeSheet('sheetScan');stopScan();$('q').value=ti.value;state.q=ti.value;$('qclear').style.display=ti.value?'block':'none';render();window.scrollTo(0,0)};
+  again.onclick=startScan;
+  row.appendChild(add);row.appendChild(srch);row.appendChild(again);card.appendChild(row);R.appendChild(card);
+  chk();
+}
+
+/* ---------- import / export / sync ---------- */
+function snapshot(){lsSet(K_BACKUP,{at:nowIso(),items:db.items})}
+function applyRows(parsed,label){
+  snapshot();
+  var r=mergeRows(db.items,parsed.rows);saveItems();render();
+  var msg=label+': '+r.added+' added, '+r.updated+' updated, '+r.skipped+' unchanged/skipped.'+(parsed.headerless?' (No header row found; used first column as title.)':'');
+  return msg;
+}
+function importTable(table,label){
+  var parsed=rowsFromTable(table);
+  if(!parsed.rows.length)return 'No rows found in '+label+'.';
+  return applyRows(parsed,label);
+}
+function importFile(file){
+  var msg=$('importMsg');msg.textContent='Reading '+file.name+'…';
+  var isX=/\.(xlsx|xls)$/i.test(file.name);
+  var p=isX?needXLSX().then(function(){return file.arrayBuffer()}).then(function(buf){
+    var wb=XLSX.read(buf,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]];
+    var table=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''}).map(function(r){return r.map(function(c){return typeof c==='number'?String(c):c})});
+    return importTable(table.filter(function(r){return r.some(function(c){return String(c).trim()!==''})}),file.name);
+  }):file.text().then(function(t){return importTable(parseCSV(t),file.name)});
+  return p.then(function(m){msg.textContent=m;toast('Import done');return m},function(e){msg.textContent='Import failed: '+(e.message||e);return null});
+}
+function importBuffer(buf,name){return importFile(new File([buf],name))}
+function sheetCsvUrl(u){
+  u=u.trim();
+  if(/docs\.google\.com\/spreadsheets\/d\/e\//.test(u)){
+    if(/output=/.test(u))u=u.replace(/output=[a-z]+/,'output=csv');else u+=(u.indexOf('?')<0?'?':'&')+'output=csv';
+  }else{
+    var m=u.match(/docs\.google\.com\/spreadsheets\/d\/([^\/]+)/);
+    if(m){var g=u.match(/gid=(\d+)/);u='https://docs.google.com/spreadsheets/d/'+m[1]+'/export?format=csv'+(g?'&gid='+g[1]:'')}
+  }
+  return u;
+}
+function refreshSheet(){
+  var u=db.settings.sheetUrl,msg=$('sheetMsg');
+  if(!u){msg.textContent='Paste and save a link first.';return Promise.resolve()}
+  if(!navigator.onLine){msg.textContent='You’re offline. Try again when you have a connection.';return Promise.resolve()}
+  msg.innerHTML='<span class="spin"></span>Refreshing…';
+  return fetch(sheetCsvUrl(u),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text()}).then(function(t){
+    if(/^\s*<(!doctype|html)/i.test(t))throw new Error('That link returned a web page, not CSV. Use File → Share → Publish to web → CSV.');
+    var m=importTable(parseCSV(t),'Sheet');db.settings.lastSync=nowIso();saveSettings();
+    msg.textContent=m+' Synced '+new Date().toLocaleString()+'.';toast('Sheet refreshed');
+  }).catch(function(e){msg.textContent='Couldn’t load the sheet: '+(e.message||e)+'. Check that it is published to the web as CSV.'});
+}
+function download(name,text){
+  var blob=new Blob([text],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},2000);
+}
+function exportCSV(){
+  var name='movie-check-'+new Date().toISOString().slice(0,10)+'.csv',text=toCSV(db.items);
+  try{
+    var f=new File([text],name,{type:'text/csv'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})&&navigator.share){navigator.share({files:[f],title:'Movie Check backup'}).catch(function(){});return}
+  }catch(e){}
+  download(name,text);
+}
+function openData(){
+  $('sheetUrl').value=db.settings.sheetUrl||'';$('tmdbKey').value=db.settings.tmdbKey||'';$('proxyUrl').value=db.settings.proxyUrl||'';
+  $('sheetMsg').textContent=db.settings.lastSync?'Last synced '+new Date(db.settings.lastSync).toLocaleString()+'.':'';
+  $('storeMsg').textContent=db.items.length+' titles stored on this device only. Export a CSV now and then as a backup. The Home Screen app and Safari keep separate libraries.';
+  openSheet('sheetData');
+}
+
+/* ---------- wiring ---------- */
+function init(){
+  load();
+  var q=$('q');
+  q.addEventListener('input',function(){state.q=q.value;$('qclear').style.display=q.value?'block':'none';render()});
+  q.addEventListener('keydown',function(e){if(e.key==='Enter')q.blur()});
+  $('qclear').onclick=function(){q.value='';state.q='';$('qclear').style.display='none';render();q.focus()};
+  $('btnAdd').onclick=function(){openEdit(null,{title:state.q.trim()})};
+  $('editClose').onclick=function(){closeSheet('sheetEdit')};
+  $('editSave').onclick=function(){saveEdit(false)};
+  $('editDelete').onclick=function(){if(editing&&confirm('Delete “'+editing.title+'” from your library?')){db.items=db.items.filter(function(i){return i!==editing});saveItems();closeSheet('sheetEdit');toast('Deleted');render()}};
+  $('btnScan').onclick=startScan;
+  $('scanClose').onclick=function(){stopScan();closeSheet('sheetScan')};
+  $('manualGo').onclick=function(){var v=$('manualUpc').value;stopScan().then(function(){checkUpc(v)})};
+  $('manualUpc').addEventListener('keydown',function(e){if(e.key==='Enter')$('manualGo').click()});
+  $('btnData').onclick=openData;$('dataClose').onclick=function(){closeSheet('sheetData')};
+  $('btnFile').onclick=function(){$('file').click()};
+  $('file').onchange=function(){var f=this.files[0];if(f)importFile(f).then(function(){$('file').value=''})};
+  $('btnUndo').onclick=function(){var b=ls(K_BACKUP,null);if(!b){toast('Nothing to undo');return}db.items=b.items;saveItems();lsSet(K_BACKUP,null);render();$('importMsg').textContent='Restored library from before the last import.'};
+  $('btnSaveSheet').onclick=function(){db.settings.sheetUrl=$('sheetUrl').value.trim();saveSettings();toast('Link saved')};
+  $('btnRefresh').onclick=function(){db.settings.sheetUrl=$('sheetUrl').value.trim();saveSettings();refreshSheet()};
+  $('btnExport').onclick=exportCSV;
+  $('btnCopy').onclick=function(){var t=toCSV(db.items);(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){toast('CSV copied')},function(){toast('Copy not available; use Export')})};
+  $('btnSaveSettings').onclick=function(){db.settings.tmdbKey=$('tmdbKey').value.trim();db.settings.proxyUrl=$('proxyUrl').value.trim();saveSettings();toast('Settings saved');render()};
+  $('btnWipe').onclick=function(){if(confirm('Delete your ENTIRE library on this device? Export a CSV first if unsure.')){snapshot();db.items=[];saveItems();render();toast('Library cleared (use Undo in Data to restore)')}};
+  window.addEventListener('online',render);
+  render();
+  if(navigator.storage&&navigator.storage.persist)try{navigator.storage.persist()}catch(e){}
+  if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){})});
+}
+window.MC={norm:norm,score:score,searchLocal:searchLocal,ownedFor:ownedFor,seriesOf:seriesOf,siblings:siblings,parseCSV:parseCSV,rowsFromTable:rowsFromTable,mergeRows:mergeRows,normFormat:normFormat,normUpc:normUpc,cleanUpc:cleanUpc,cleanTitle:cleanTitle,toCSV:toCSV,importFile:importFile,importBuffer:importBuffer,checkUpc:checkUpc,sheetCsvUrl:sheetCsvUrl,db:db,render:render,state:state,STRONG:STRONG,Providers:Providers,findByUpc:findByUpc,addItem:addItem};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+</body>
+</html>
