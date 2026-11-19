@@ -125,6 +125,24 @@ a{color:var(--accent)}
 .mini{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .mini button{min-height:36px;padding:0 10px;font-size:13px;border-radius:10px;box-shadow:none}
 .rating{display:inline-block;border:1.5px solid var(--muted);border-radius:6px;padding:0 6px;font-size:13px;font-weight:700;margin-right:6px}
+
+.camBox{position:relative;width:100%;aspect-ratio:4/3;max-height:60vh;border-radius:16px;overflow:hidden;background:#111827}
+.camBox video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+.camBox.live video{display:block}
+.aim{position:absolute;left:10%;top:35%;width:80%;height:30%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);display:none;pointer-events:none}
+.camBox.live .aim{display:block}
+.aim.ok{border-color:#22c55e}
+.aim:after{content:"";position:absolute;left:6%;right:6%;top:50%;height:2px;background:rgba(239,68,68,.85);animation:sweep 1.6s ease-in-out infinite alternate}
+@keyframes sweep{from{top:12%}to{top:88%}}
+.camOver{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;text-align:center;color:#e5e7eb;font-size:15px;background:#1f2937}
+.camBox.live .camOver{display:none}
+.camOver button.big{min-height:64px;font-size:20px;padding:0 28px;border-radius:16px}
+.aimtext{font-size:17px;font-weight:600;text-align:center;margin:10px 0 4px}
+.camTools{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0}
+.camTools button{min-height:48px;flex:1 1 40%}
+.photoBtn{display:flex;align-items:center;justify-content:center;min-height:54px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-weight:600;cursor:pointer;box-shadow:var(--shadow);text-transform:none;letter-spacing:0;color:var(--text);font-size:17px;margin:0}
+.steps{text-align:left;font-size:14px;line-height:1.4;margin:0;padding-left:18px}
+.match{display:flex;gap:12px;margin:10px 0;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
 .updbar{position:fixed;left:12px;right:12px;top:calc(8px + env(safe-area-inset-top));z-index:200;background:var(--accent);color:#fff;border-radius:12px;padding:10px 14px;display:none;align-items:center;gap:10px}
 .updbar button{min-height:36px;background:#fff;color:#111;border:0}
 </style>
@@ -194,8 +212,26 @@ a{color:var(--accent)}
 <!-- Scan -->
 <div class="sheet" id="sheetScan">
   <div class="top"><h2>Scan a barcode</h2><button id="scanClose">Close</button></div>
-  <div id="reader"></div>
-  <p class="muted" id="scanHint">Point the back camera at the UPC on the case. Needs HTTPS and camera permission.</p>
+  <div class="camBox" id="camBox">
+    <video id="scanVideo" playsinline webkit-playsinline muted autoplay></video>
+    <div class="aim" id="aim"></div>
+    <div class="camOver" id="camOver">
+      <div id="camMsg">Tap to turn on the back camera.</div>
+      <button id="camStart" class="primary big">📷 Start camera</button>
+    </div>
+  </div>
+  <div class="aimtext" id="scanHint">Hold the barcode inside the box. It scans automatically.</div>
+  <div class="muted" style="text-align:center" id="scanTip">Tap the picture to focus. If it won’t read: back up a little, add light, or use the torch.</div>
+  <div class="camTools" id="camTools">
+    <button id="btnTorch" style="display:none">🔦 Torch</button>
+    <button id="btnZoom" style="display:none">🔍 Zoom 2×</button>
+    <button id="btnRestart" style="display:none">↻ Restart camera</button>
+  </div>
+  <div class="card">
+    <label class="photoBtn" for="photoIn">📷 Take a photo of the barcode</label>
+    <input id="photoIn" type="file" accept="image/*" capture="environment" style="display:none">
+    <p style="margin-top:8px">Doesn’t read live? Take a close, sharp photo of the barcode and the app will decode it.</p>
+  </div>
   <div class="card">
     <h3>Or type the UPC</h3>
     <div class="two"><input id="manualUpc" type="text" inputmode="numeric" placeholder="e.g. 883929244508"><button id="manualGo" class="primary">Check</button></div>
@@ -236,7 +272,7 @@ a{color:var(--accent)}
     <h3>Online lookups</h3>
     <p>Your free TMDB API key powers title search, posters, ratings, cast and series. Get one at themoviedb.org → Settings → API.</p>
     <label for="tmdbKey">TMDB API key (v3)</label><input id="tmdbKey" type="password" autocomplete="off" autocapitalize="none">
-    <label for="proxyUrl">Barcode lookup proxy (advanced)</label><input id="proxyUrl" type="url" placeholder="https://your-worker.example.workers.dev/?url=" autocapitalize="none">
+    <label for="proxyUrl">Barcode lookup Worker URL (advanced override)</label><input id="proxyUrl" type="url" placeholder="Leave blank to use the built-in Movie Check Worker" autocapitalize="none">
     <div class="btnrow"><button id="btnSaveSettings">Save settings</button></div>
   </div>
   <div class="card">
@@ -253,7 +289,7 @@ a{color:var(--accent)}
 var FORMAT_ORDER=['4K UHD','Blu-ray','DVD','Digital','Other'];
 var FORMAT_LABEL={'4K UHD':'4K UHD','Blu-ray':'Blu-ray','DVD':'DVD','Digital':'Digital code','Other':'Other'};
 var K_ITEMS='mc_items_v1',K_SET='mc_settings_v1',K_BACKUP='mc_backup_v1',K_UPC='mc_upc_cache_v1',K_PREMIG='mc_premigration_v1',K_TMDBMAP='mc_tmdb_map_v1',K_COLL='mc_tmdb_coll_v1';
-var CDN={qr:'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',xlsx:'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'};
+var CDN={zx:'https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.7/dist/iife/reader/index.js',xlsx:'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'};
 var TMDB='https://api.themoviedb.org/3';
 var db={items:[],settings:{}};
 function ls(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
@@ -1078,90 +1114,245 @@ function loadScript(name,local,cdn,check){
   loaded[name]=tryUrl(local).catch(function(){return tryUrl(cdn)}).then(function(){if(!check())throw new Error('library missing')}).catch(function(e){delete loaded[name];throw e});
   return loaded[name];
 }
-function needQR(){return loadScript('qr','lib/html5-qrcode.min.js',CDN.qr,function(){return !!window.Html5Qrcode})}
-function needXLSX(){return loadScript('xlsx','lib/xlsx.full.min.js',CDN.xlsx,function(){return !!window.XLSX})}
-
-/* ================= scanning ================= */
-var scanner=null,scanning=false;
-function setScanHint(t){$('scanHint').textContent=t}
-function startScan(){
-  clear($('scanResult'));
-  openSheet('sheetScan');
-  if(!window.isSecureContext&&location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'){setScanHint('The camera needs a secure (HTTPS) page. You can still type the UPC below.');return}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){setScanHint('This browser has no camera access. Type the UPC below.');return}
-  setScanHint('Starting camera…');
-  needQR().then(function(){
-    var Q_=window.Html5Qrcode,F=window.Html5QrcodeSupportedFormats;
-    scanner=new Q_('reader',{formatsToSupport:[F.UPC_A,F.UPC_E,F.EAN_13,F.EAN_8],verbose:false});
-    return scanner.start({facingMode:'environment'},{fps:10,qrbox:function(w,h){return{width:Math.floor(w*.85),height:Math.floor(Math.min(h,w)*.4)}}},
-      function(text){onScanned(text)},function(){}).then(function(){scanning=true;setScanHint('Point the back camera at the UPC barcode on the case.')});
-  }).catch(function(e){
-    scanning=false;
-    var m=String(e&&e.name||e&&e.message||e);
-    if(/NotAllowed|Permission/i.test(m))setScanHint('Camera permission was denied. On iPhone: Settings → Safari → Camera → Ask/Allow (or for the Home Screen app, allow when asked). You can type the UPC below.');
-    else if(/NotFound|Devices/i.test(m))setScanHint('No camera found. Type the UPC below.');
-    else if(/load|library/i.test(m))setScanHint('Couldn’t load the scanner library (offline?). Type the UPC below.');
-    else setScanHint('Couldn’t start the camera ('+m+'). Type the UPC below.');
+function needZX(){
+  return loadScript('zx','lib/zxing-reader.iife.js',CDN.zx,function(){return !!window.ZXingWASM}).then(function(){
+    if(!needZX.done){
+      needZX.done=true;
+      if(document.querySelector('script[src*="lib/zxing-reader"]'))
+        ZXingWASM.setZXingModuleOverrides({locateFile:function(path,prefix){return /\.wasm$/.test(path)?new URL('lib/zxing_reader.wasm',location.href).href:prefix+path}});
+    }
   });
 }
-function stopScan(){
-  var s=scanner;scanner=null;
-  if(!s||!scanning){scanning=false;return Promise.resolve()}
-  scanning=false;
-  return s.stop().then(function(){try{s.clear()}catch(e){}},function(){});
+
+/* ================= camera scanning (zxing-wasm) ================= */
+var ZX_OPTS={formats:['EAN-13','UPC-A','UPC-E','EAN-8'],tryHarder:true,tryRotate:true,tryInvert:false,tryDownscale:true,maxNumberOfSymbols:1};
+var cam={stream:null,track:null,running:false,starting:false,busy:false,loopT:null,tick:0,torchOn:false,zoomOn:false,everStarted:false,caps:{}};
+var audioCtx=null,scanCanvas=null;
+function setOver(msgNode,btnLabel){
+  var m=$('camMsg');clear(m);if(typeof msgNode==='string')m.textContent=msgNode;else m.appendChild(msgNode);
+  var b=$('camStart');b.style.display=btnLabel?'':'none';if(btnLabel)b.textContent=btnLabel;
 }
-function onScanned(text){
-  if(!scanning)return;
-  if(navigator.vibrate)try{navigator.vibrate(60)}catch(e){}
-  stopScan().then(function(){checkUpc(text)});
+function beep(){
+  try{
+    if(!audioCtx)return;
+    var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='square';o.frequency.value=1100;g.gain.value=.15;
+    o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+.12);
+  }catch(e){}
+}
+function decodeImageData(id){
+  return ZXingWASM.readBarcodes(id,ZX_OPTS).then(function(r){
+    for(var i=0;i<r.length;i++)if(r[i].text&&(r[i].isValid!==false))return r[i].text;
+    return null;
+  });
+}
+function openScan(){clear($('scanResult'));openSheet('sheetScan')}
+function startScan(){openScan();return startCamera()}
+async function startCamera(){
+  if(cam.running||cam.starting)return;
+  cam.starting=true;clear($('scanResult'));
+  $('aim').classList.remove('ok');
+  try{
+    if(!window.isSecureContext&&location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'){
+      cam.starting=false;setOver('The camera needs a secure (HTTPS) page. Use the photo option or type the UPC below.','');return;
+    }
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){cam.starting=false;setOver('This browser can’t open the camera. Use the photo option or type the UPC below.','');return}
+    setOver('Starting camera…','');
+    try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume()}catch(e){}
+    var gum=navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
+    var zx=needZX();zx.catch(function(){});
+    var stream;
+    try{stream=await gum}catch(e){
+      if(e&&/Overconstrained|Constraint/i.test(e.name))stream=await navigator.mediaDevices.getUserMedia({audio:false,video:true});else throw e;
+    }
+    cam.stream=stream;cam.track=stream.getVideoTracks()[0];cam.everStarted=true;
+    var v=$('scanVideo');v.muted=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.srcObject=stream;
+    await v.play();
+    await zx;
+    var caps={};try{caps=cam.track.getCapabilities?cam.track.getCapabilities():{}}catch(e){}
+    cam.caps=caps||{};
+    if(caps.focusMode&&caps.focusMode.indexOf('continuous')>=0)cam.track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(function(){});
+    cam.torchOn=false;cam.zoomOn=false;
+    $('btnTorch').style.display=caps.torch?'':'none';$('btnTorch').textContent='🔦 Torch';
+    $('btnZoom').style.display=(caps.zoom&&caps.zoom.max>caps.zoom.min)?'':'none';$('btnZoom').textContent='🔍 Zoom 2×';
+    $('btnRestart').style.display='';
+    $('camBox').classList.add('live');cam.running=true;cam.tick=0;cam.busy=false;
+    $('scanHint').textContent='Hold the barcode inside the box. It scans automatically.';
+    scanLoop();
+  }catch(e){
+    releaseStream();showCamError(e);
+  }
+  cam.starting=false;
+}
+function releaseStream(){
+  clearTimeout(cam.loopT);cam.running=false;
+  if(cam.stream){try{cam.stream.getTracks().forEach(function(t){t.stop()})}catch(e){}}
+  cam.stream=null;cam.track=null;
+  var v=$('scanVideo');try{v.pause();v.srcObject=null}catch(e){}
+  $('camBox').classList.remove('live');
+  $('btnTorch').style.display='none';$('btnZoom').style.display='none';$('btnRestart').style.display='none';
+}
+function stopCamera(msg){
+  var was=cam.running||!!cam.stream;
+  releaseStream();
+  setOver(msg||'Camera is off.',cam.everStarted?'↻ Restart camera':'📷 Start camera');
+  return was;
+}
+function stopScan(){stopCamera();return Promise.resolve()}
+function showCamError(e){
+  var n=String(e&&e.name||''),box=document.createElement('div');
+  if(/NotAllowed|Security|Permission/i.test(n)){
+    box.appendChild(el('b',null,'The camera is blocked.'));
+    var ol=el('ol','steps');
+    ['Open Settings → Safari → Camera and choose Allow (or Ask).','Come back here and reload the page. If you use the Home Screen app, close it and reopen it.','Tap Start camera and choose Allow.'].forEach(function(t){ol.appendChild(el('li',null,t))});
+    box.appendChild(ol);
+  }else if(/NotFound|Devices/i.test(n))box.textContent='No camera was found on this device. Use the photo option or type the UPC.';
+  else if(/NotReadable|TrackStart|Abort/i.test(n))box.textContent='The camera is busy in another app. Close other apps using the camera, then tap Start camera.';
+  else if(/load|library|wasm/i.test(String(e&&e.message)))box.textContent='Couldn’t load the barcode reader (offline?). Use the photo option or type the UPC.';
+  else box.textContent='Couldn’t start the camera ('+(n||String(e&&e.message||e))+'). Tap Start camera to retry.';
+  setOver(box,cam.everStarted?'↻ Restart camera':'📷 Start camera');
+}
+function scanLoop(){
+  if(!cam.running)return;
+  cam.loopT=setTimeout(async function(){
+    if(!cam.running)return;
+    var v=$('scanVideo');
+    if(v.readyState>=2&&v.videoWidth&&!cam.busy){
+      cam.busy=true;
+      try{var t=await scanFrame(v);if(t&&cam.running){onDecoded(t);return}}catch(e){}
+      cam.busy=false;
+    }
+    scanLoop();
+  },110);
+}
+function drawRegion(v,sx,sy,sw,sh,maxW){
+  var sc=Math.min(1,maxW/sw),tw=Math.max(1,Math.round(sw*sc)),th=Math.max(1,Math.round(sh*sc));
+  if(!scanCanvas){scanCanvas=document.createElement('canvas')}
+  scanCanvas.width=tw;scanCanvas.height=th;
+  var ctx=scanCanvas.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(v,sx,sy,sw,sh,0,0,tw,th);
+  return ctx.getImageData(0,0,tw,th);
+}
+/* decode the part of the frame inside the aim box (plus a margin); every 4th pass also try the whole visible frame */
+async function scanFrame(v){
+  var box=$('camBox'),W=box.clientWidth||1,H=box.clientHeight||1,vw=v.videoWidth,vh=v.videoHeight;
+  var scale=Math.max(W/vw,H/vh),sw=W/scale,sh=H/scale,sx0=(vw-sw)/2,sy0=(vh-sh)/2;
+  var fx0=.05,fx1=.95,fy0=.25,fy1=.75; // aim box is x .10-.90, y .35-.65; decode a little more than that
+  var id=drawRegion(v,sx0+sw*fx0,sy0+sh*fy0,sw*(fx1-fx0),sh*(fy1-fy0),1280);
+  var t=await decodeImageData(id);
+  if(!t&&(cam.tick++%4)===3){id=drawRegion(v,sx0,sy0,sw,sh,1280);t=await decodeImageData(id)}
+  return t;
+}
+function onDecoded(text){
+  var digits=String(text).replace(/\D/g,'');
+  $('aim').classList.add('ok');beep();
+  if(navigator.vibrate)try{navigator.vibrate(80)}catch(e){}
+  stopCamera('Scanned '+digits);
+  checkUpc(digits);
+}
+function focusTap(){
+  if(!cam.running||!cam.track)return;
+  var caps=cam.caps||{},h=$('scanHint');
+  if(caps.focusMode){
+    h.textContent='Focusing…';
+    cam.track.applyConstraints({advanced:[{focusMode:'single-shot'}]}).catch(function(){}).then(function(){
+      setTimeout(function(){
+        if(cam.track&&caps.focusMode.indexOf('continuous')>=0)cam.track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(function(){});
+        if(cam.running)h.textContent='Hold the barcode inside the box. It scans automatically.';
+      },1200);
+    });
+  }
+}
+function toggleTorch(){
+  if(!cam.track)return;cam.torchOn=!cam.torchOn;
+  cam.track.applyConstraints({advanced:[{torch:cam.torchOn}]}).then(function(){$('btnTorch').textContent=cam.torchOn?'🔦 Torch on':'🔦 Torch'},function(){cam.torchOn=false;toast('Torch not available on this camera')});
+}
+function toggleZoom(){
+  if(!cam.track||!cam.caps.zoom)return;var z=cam.caps.zoom;cam.zoomOn=!cam.zoomOn;
+  var target=cam.zoomOn?Math.min(Math.max(2,z.min),z.max):z.min;
+  cam.track.applyConstraints({advanced:[{zoom:target}]}).then(function(){$('btnZoom').textContent=cam.zoomOn?'🔍 Zoom 1×':'🔍 Zoom 2×'},function(){cam.zoomOn=false;toast('Zoom not available')});
+}
+/* decode a still photo (fallback) */
+async function decodePhoto(file){
+  await needZX();
+  var bmp=null;
+  try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}catch(e){
+    bmp=await new Promise(function(res,rej){var im=new Image(),u=URL.createObjectURL(file);im.onload=function(){URL.revokeObjectURL(u);res(im)};im.onerror=function(){rej(new Error('image'))};im.src=u});
+  }
+  var W=bmp.width||bmp.naturalWidth,H=bmp.height||bmp.naturalHeight,sizes=[2000,1400,900];
+  for(var i=0;i<sizes.length;i++){
+    var r=Math.min(1,sizes[i]/Math.max(W,H)),c=document.createElement('canvas');c.width=Math.round(W*r);c.height=Math.round(H*r);
+    var ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(bmp,0,0,c.width,c.height);
+    var t=await decodeImageData(ctx.getImageData(0,0,c.width,c.height));
+    if(t)return t;
+  }
+  return null;
+}
+function onPhoto(file){
+  var R=$('scanResult');clear(R);
+  var st=banner('info','Reading photo…','');R.appendChild(st);
+  stopCamera('Camera paused while reading the photo.');
+  decodePhoto(file).then(function(t){
+    if(t){beep();checkUpc(t)}
+    else{clear(R);var b=banner('sim','No barcode found in that photo','Get close so the barcode fills the frame, keep it flat and sharp (tap to focus), use good light, then try again. Or type the number below.');R.appendChild(b)}
+  },function(e){clear(R);R.appendChild(banner('sim','Couldn’t read that photo',String(e&&e.message||e)))});
+}
+
+/* ================= UPC lookup (Movie Check Worker) ================= */
+var DEFAULT_WORKER='https://movie-check-upc.jcele1.workers.dev/';
+function workerUrl(upc){
+  var b=(db.settings.proxyUrl||'').trim()||DEFAULT_WORKER;
+  if(b.indexOf('{upc}')>=0)return b.replace('{upc}',encodeURIComponent(upc));
+  if(/[?&]upc=$/.test(b))return b+encodeURIComponent(upc);
+  return b+(b.indexOf('?')<0?'?':'&')+'upc='+encodeURIComponent(upc);
 }
 function cleanTitle(raw){
   var t=String(raw||'');
+  var sm=t.match(/^(.{2,45}?)\s+[-\u2013]\s+(.+)$/);
+  if(sm&&/\b(pictures|entertainment|studios?|home (video|entertainment)|warner|universal|paramount|disney|lionsgate|20th century|fox|mgm|columbia|dreamworks|miramax|criterion|shout|kino|sony|a24|lucasfilm|pixar|new line|touchstone|summit|focus features|magnolia|anchor bay|arrow|scream factory|vinegar syndrome)\b/i.test(sm[1]))t=sm[2];
   t=t.replace(/\s*[\[(][^\])]*(blu-?ray|dvd|4k|uhd|ultra\s*hd|digital|combo|steelbook|widescreen|special edition|collector)[^\])]*[\])]/gi,'');
   var trail=/(?:[\s\-\u2013:,+&\/]*(?:4k(?:\s*ultra\s*hd)?|ultra\s*hd|uhd|blu-?ray|bd|dvd|digital(?:\s*(?:code|copy|hd))?|combo(?:\s*pack)?|\d+-?disc(?:\s*set)?))+\s*$/gi;
   t=t.replace(trail,'');
   return t.replace(/\s{2,}/g,' ').replace(/[\s\-\u2013:,+&\/]+$/,'').trim();
 }
-function lookupUpc(upc){
+function lookupErr(reason){var e=new Error(reason);e.reason=reason;return e}
+async function lookupUpc(upc){
   var cache=ls(K_UPC,{}),c=cache[upc];
-  if(c)return Promise.resolve(c);
-  var base='https://api.upcitemdb.com/prod/trial/lookup?upc='+encodeURIComponent(upc);
-  var attempts=[];
-  if(db.settings.proxyUrl)attempts.push(function(){return fetchJson(db.settings.proxyUrl+encodeURIComponent(base),10000)});
-  attempts.push(function(){return fetchJson(base,8000)});
-  attempts.push(function(){return fetchJson('https://api.allorigins.win/get?url='+encodeURIComponent(base),10000).then(function(d){return JSON.parse(d.contents)})});
-  var last=null;
-  return attempts.reduce(function(p,fn){
-    return p.then(function(r){if(r)return r;return fn().then(function(d){
-      if(d&&d.code==='OK'&&d.items&&d.items.length)return d;
-      if(d&&d.code==='EXCEED_LIMIT'){last=new Error('limit');return null}
-      if(d&&d.code==='OK'){last=new Error('notfound');return null}
-      last=new Error('bad response');return null;
-    },function(e){last=last&&last.message==='limit'?last:e;return null})});
-  },Promise.resolve(null)).then(function(d){
-    if(!d){var err=new Error(last&&last.message||'failed');err.reason=last&&last.message;throw err}
-    var it=d.items[0],out={title:cleanTitle(it.title),raw:it.title,formats:detectFormats(it.title),year:((String(it.title).match(/\((\d{4})\)/)||[])[1])||''};
-    cache[upc]=out;lsSet(K_UPC,cache);return out;
-  });
+  if(c)return c;
+  var r,d=null;
+  try{
+    var ctl=window.AbortController?new AbortController():null,t=setTimeout(function(){ctl&&ctl.abort()},12000);
+    try{r=await fetch(workerUrl(upc),ctl?{signal:ctl.signal}:{})}finally{clearTimeout(t)}
+  }catch(e){throw lookupErr('network')}
+  try{d=await r.json()}catch(e){}
+  if(r.status===429||(d&&d.error==='rate_limited'))throw lookupErr('limit');
+  if(!r.ok||!d)throw lookupErr('failed');
+  if(!d.found)throw lookupErr('notfound');
+  var raw=d.rawTitle||d.title||'';
+  var out={title:cleanTitle(d.title||raw)||d.title||raw,raw:raw,brand:d.brand||'',
+    formats:(d.formats&&d.formats.length)?sortFormats(d.formats):detectFormats(raw),
+    year:((String(raw).match(/\((\d{4})\)/)||[])[1])||'',image:(d.images&&d.images[0])||''};
+  cache[upc]=out;lsSet(K_UPC,cache);return out;
 }
 function checkUpc(text){
   var upc=String(text).replace(/\D/g,''),R=$('scanResult');clear(R);
+  if(upc.length===13&&upc.charAt(0)==='0')upc=upc.slice(1); // UPC-A read as EAN-13 with a leading 0
+  var scroll=function(){setTimeout(function(){try{R.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){}},50)};
   if(upc.length<6){R.appendChild(banner('sim','That doesn’t look like a UPC','Try again or type the number.'));return}
   var own=findByUpc(upc);
   if(own){
     var b=banner('own','You own this on '+joinFormats(own.formats),own.title+(own.year?' ('+own.year+')':'')+' · '+upc);
     var row=el('div','row'),again=el('button','primary','Scan another'),ed=el('button',null,'View entry');
-    again.onclick=startScan;ed.onclick=function(){closeSheet('sheetScan');stopScan();openDetail(own)};row.appendChild(again);row.appendChild(ed);b.appendChild(row);R.appendChild(b);return;
+    again.onclick=startScan;ed.onclick=function(){closeSheet('sheetScan');stopScan();openDetail(own)};row.appendChild(again);row.appendChild(ed);b.appendChild(row);R.appendChild(b);scroll();return;
   }
-  R.appendChild(banner('new','Not in library',upc+' · looking up title…'));
+  R.appendChild(banner('new','Not in library',upc+' · looking up title…'));scroll();
   lookupUpc(upc).then(function(info){
     clear(R);R.appendChild(banner('new','Not in library','UPC '+upc+(info.raw?' · '+info.raw:'')));
-    scanForm(R,upc,info,null);
+    scanForm(R,upc,info,null);scroll();
   },function(err){
     clear(R);
-    var why={limit:'The free barcode lookup is out of requests for now (the trial allows about 100 per day).',notfound:'That barcode isn’t in the free lookup database.'}[err.reason]||'The online barcode lookup couldn’t be reached from the browser.';
+    var why={limit:'The free barcode lookup is out of requests for now (the trial allows about 100 per day).',notfound:'That barcode isn’t in the free lookup database.',failed:'The barcode lookup service returned an error.'}[err.reason]||'The barcode lookup service couldn’t be reached.';
     R.appendChild(banner('new','Not in library','UPC '+upc));
-    scanForm(R,upc,{title:'',formats:[],year:''},why+' Type the title, or search for it by name.');
+    scanForm(R,upc,{title:'',formats:[],year:''},why+' Type the title, or search for it by name.');scroll();
   });
 }
 function scanForm(R,upc,info,msg){
@@ -1169,11 +1360,51 @@ function scanForm(R,upc,info,msg){
   if(msg)card.appendChild(el('p',null,msg));
   card.appendChild(el('h3',null,info.title?'Add to library':'Add this disc'));
   var ti=el('input');ti.type='text';ti.value=info.title||'';ti.placeholder='Movie title';
-  var warn=el('div');
-  function chk(){clear(warn);var o=ownedFor(ti.value,info.year);if(ti.value.trim()&&o.exact.length){warn.appendChild(banner('own','You own this on '+fmtList(o.exact),'Adding will include the formats you tick below in that entry.'))}}
-  ti.oninput=chk;
-  card.appendChild(el('label',null,'Title'));card.appendChild(ti);card.appendChild(warn);
+  var warn=el('div'),mbox=el('div');
+  var ms={det:null,tok:0,t:null};
   var yi=el('input');yi.type='number';yi.inputMode='numeric';yi.value=info.year||'';
+  function chk(){clear(warn);var y=yi.value||(ms.det&&ms.det.year)||'';var o=ownedFor(ti.value,y);if(ti.value.trim()&&o.exact.length){warn.appendChild(banner('own','You own this on '+fmtList(o.exact),'Adding will put the formats you tick below on that entry.'))}}
+  function drawMatch(){
+    clear(mbox);var d=ms.det;if(!d)return;
+    var m=el('div','match');m.appendChild(img(tmdbImg(d.poster,'w185'),'poster',d.title));
+    var b=el('div','rbody');b.appendChild(el('strong',null,d.title+(d.year?' ('+d.year+')':'')));
+    b.appendChild(el('div','sub',[d.cert,d.runtime?Math.floor(d.runtime/60)+'h '+(d.runtime%60)+'m':'',d.genres.slice(0,2).join(', ')].filter(Boolean).join(' · ')));
+    if(d.overview)b.appendChild(el('div','ser',d.overview.slice(0,130)+(d.overview.length>130?'…':'')));
+    var wrong=el('button',null,'Wrong movie?');wrong.style.cssText='min-height:40px;margin-top:8px;font-size:14px';
+    wrong.onclick=async function(){
+      wrong.disabled=true;
+      try{
+        var dd=await tmdbGet('/search/movie',{query:ti.value.trim(),include_adult:'false'});
+        var list=el('div');list.style.marginTop='8px';
+        (dd.results||[]).slice(0,5).forEach(function(r){
+          var bt=el('button',null,r.title+(r.release_date?' ('+r.release_date.slice(0,4)+')':''));bt.style.cssText='display:block;width:100%;text-align:left;margin-bottom:6px;min-height:44px;font-size:15px';
+          bt.onclick=async function(){try{var x=await fetchDetails(r.id);x.manual=true;x.ambiguous=false;x.fetchedAt=nowIso();ms.det=x;if(x.year)yi.value=x.year;drawMatch();chk()}catch(e){toast('Couldn’t load that movie')}};
+          list.appendChild(bt);
+        });
+        if(!list.childNodes.length)list.appendChild(el('div','muted','No other matches.'));
+        b.appendChild(list);
+      }catch(e){toast('Couldn’t reach TMDB');wrong.disabled=false}
+    };
+    b.appendChild(wrong);m.appendChild(b);mbox.appendChild(m);
+  }
+  async function runMatch(){
+    if(!db.settings.tmdbKey)return;
+    var t=ti.value.trim(),tok=++ms.tok;
+    if(t.length<2){ms.det=null;clear(mbox);return}
+    clear(mbox);var sp=el('div','muted');sp.innerHTML='<span class="spin"></span>Matching on TMDB…';mbox.appendChild(sp);
+    try{
+      var b=await tmdbSearch(t,yi.value.trim()||info.year||'');
+      if(tok!==ms.tok)return;
+      if(!b){ms.det=null;clear(mbox);mbox.appendChild(el('div','muted','No TMDB match for that title.'));return}
+      var det=await fetchDetails(b.best.id);
+      if(tok!==ms.tok)return;
+      det.ambiguous=b.ambiguous;det.manual=false;det.fetchedAt=nowIso();ms.det=det;
+      if(!yi.value)yi.value=det.year;
+      drawMatch();chk();
+    }catch(e){if(tok===ms.tok){ms.det=null;clear(mbox);mbox.appendChild(el('div','muted',e.code==='auth'?'TMDB rejected the API key.':'Couldn’t reach TMDB for a match.'))}}
+  }
+  ti.oninput=function(){chk();clearTimeout(ms.t);ms.t=setTimeout(runMatch,700)};
+  card.appendChild(el('label',null,'Title'));card.appendChild(ti);card.appendChild(warn);card.appendChild(mbox);
   card.appendChild(el('label',null,'Year'));card.appendChild(yi);
   card.appendChild(el('label',null,'Formats (editable)'));
   var fc=el('div','checks');formatChecks(fc,info.formats||[]);card.appendChild(fc);
@@ -1182,13 +1413,15 @@ function scanForm(R,upc,info,msg){
   add.onclick=function(){
     var t=ti.value.trim();if(!t){toast('Enter a title');ti.focus();return}
     var f=checkedFormats(fc);if(!f.length){toast('Pick at least one format');return}
-    var r=addOrMerge({title:t,year:yi.value.trim(),formats:f,upcs:[upc]});toast(r.merged?'Formats added':'Added to library');render();
+    var r=addOrMerge({title:t,year:yi.value.trim(),formats:f,upcs:[upc]});
+    if(ms.det&&!r.item.tmdb){r.item.tmdb=ms.det;if(!r.item.year&&ms.det.year)r.item.year=ms.det.year;delete r.item.pendingTmdbId;saveItems()}
+    toast(r.merged?'Formats added':'Added to library');render();
     clear(R);R.appendChild(banner('own','Saved','You own '+t+' on '+joinFormats(r.item.formats)));var r2=el('div','btnrow'),a=el('button','primary','Scan another');a.onclick=startScan;r2.appendChild(a);R.appendChild(r2);
   };
   srch.onclick=function(){closeSheet('sheetScan');stopScan();$('q').value=ti.value;state.q=ti.value;$('qclear').style.display=ti.value?'block':'none';renderLibrary();scheduleOnline();window.scrollTo(0,0)};
   again.onclick=startScan;
   row.appendChild(add);row.appendChild(srch);row.appendChild(again);card.appendChild(row);R.appendChild(card);
-  chk();
+  chk();if(info.title)runMatch();
 }
 
 /* ================= import / export / sync ================= */
@@ -1276,8 +1509,11 @@ function init(){
   $('pickGo').onclick=runPick;
   $('pickQ').addEventListener('keydown',function(e){if(e.key==='Enter')runPick()});
   $('btnScan').onclick=startScan;
-  $('scanClose').onclick=function(){stopScan();closeSheet('sheetScan')};
-  $('manualGo').onclick=function(){var v=$('manualUpc').value;stopScan().then(function(){checkUpc(v)})};
+  $('camStart').onclick=startCamera;$('btnRestart').onclick=function(){stopCamera();startCamera()};$('btnTorch').onclick=toggleTorch;$('btnZoom').onclick=toggleZoom;$('camBox').addEventListener('click',focusTap);
+  $('photoIn').onchange=function(){var f=this.files[0];this.value='';if(f)onPhoto(f)};
+  document.addEventListener('visibilitychange',function(){if(document.hidden&&cam.running)stopCamera('Camera paused. Tap to restart.')});
+  $('scanClose').onclick=function(){stopCamera();closeSheet('sheetScan')};
+  $('manualGo').onclick=function(){var v=$('manualUpc').value;stopCamera('Camera stopped. Tap to restart.');checkUpc(v)};
   $('manualUpc').addEventListener('keydown',function(e){if(e.key==='Enter')$('manualGo').click()});
   $('btnData').onclick=openData;$('dataClose').onclick=function(){closeSheet('sheetData')};
   $('btnFile').onclick=function(){$('file').click()};
@@ -1310,7 +1546,7 @@ function init(){
     window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){})});
   }
 }
-window.MC={norm:norm,score:score,searchLocal:searchLocal,ownedFor:ownedFor,seriesOf:seriesOf,siblings:siblings,parseCSV:parseCSV,rowsFromTable:rowsFromTable,mergeRows:mergeRows,normFormat:normFormat,parseFormats:parseFormats,detectFormats:detectFormats,normUpc:normUpc,cleanUpc:cleanUpc,parseUpcs:parseUpcs,cleanTitle:cleanTitle,toCSV:toCSV,importFile:importFile,importBuffer:importBuffer,checkUpc:checkUpc,sheetCsvUrl:sheetCsvUrl,db:db,render:render,state:state,STRONG:STRONG,Providers:Providers,findByUpc:findByUpc,addOrMerge:addOrMerge,migrateItems:migrateItems,enrichItem:enrichItem,pickBest:pickBest,parseDetails:parseDetails,Q:Q,fillAll:fillAll,passFilters:passFilters,sortItems:sortItems,openDetail:openDetail,setDelay:function(n){enrichDelay=n},getCollection:getCollection,saveNow:saveNow};
+window.MC={startCamera:startCamera,stopCamera:stopCamera,decodePhoto:decodePhoto,lookupUpc:lookupUpc,workerUrl:workerUrl,cam:cam,norm:norm,score:score,searchLocal:searchLocal,ownedFor:ownedFor,seriesOf:seriesOf,siblings:siblings,parseCSV:parseCSV,rowsFromTable:rowsFromTable,mergeRows:mergeRows,normFormat:normFormat,parseFormats:parseFormats,detectFormats:detectFormats,normUpc:normUpc,cleanUpc:cleanUpc,parseUpcs:parseUpcs,cleanTitle:cleanTitle,toCSV:toCSV,importFile:importFile,importBuffer:importBuffer,checkUpc:checkUpc,sheetCsvUrl:sheetCsvUrl,db:db,render:render,state:state,STRONG:STRONG,Providers:Providers,findByUpc:findByUpc,addOrMerge:addOrMerge,migrateItems:migrateItems,enrichItem:enrichItem,pickBest:pickBest,parseDetails:parseDetails,Q:Q,fillAll:fillAll,passFilters:passFilters,sortItems:sortItems,openDetail:openDetail,setDelay:function(n){enrichDelay=n},getCollection:getCollection,saveNow:saveNow};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>

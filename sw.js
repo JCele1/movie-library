@@ -1,10 +1,10 @@
 /* Movie Check service worker: cache-first for this app's own files (offline after first load).
    Cross-origin requests (UPC lookup, title search, Google Sheets, CDN fallbacks) are never touched. */
-const CACHE = 'movie-check-v2';
+const CACHE = 'movie-check-v3';
 const ASSETS = [
   './', 'index.html', 'manifest.json', 'template.csv',
   'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png',
-  'lib/html5-qrcode.min.js', 'lib/xlsx.full.min.js'
+  'lib/zxing-reader.iife.js', 'lib/zxing_reader.wasm', 'lib/xlsx.full.min.js'
 ];
 
 self.addEventListener('install', (e) => {
