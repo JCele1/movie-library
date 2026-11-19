@@ -1579,32 +1579,52 @@ function workerUrl(upc){
   return b+(b.indexOf('?')<0?'?':'&')+'upc='+encodeURIComponent(upc);
 }
 function cleanTitle(raw){
-  var t=String(raw||'');
+  var t=String(raw||'').split(/\s{2,}/)[0];
   var sm=t.match(/^(.{2,45}?)\s+[-\u2013]\s+(.+)$/);
   if(sm&&/\b(pictures|entertainment|studios?|home (video|entertainment)|warner|universal|paramount|disney|lionsgate|20th century|fox|mgm|columbia|dreamworks|miramax|criterion|shout|kino|sony|a24|lucasfilm|pixar|new line|touchstone|summit|focus features|magnolia|anchor bay|arrow|scream factory|vinegar syndrome)\b/i.test(sm[1]))t=sm[2];
-  t=t.replace(/\s*[\[(][^\])]*(blu-?ray|dvd|4k|uhd|ultra\s*hd|digital|combo|steelbook|widescreen|special edition|collector)[^\])]*[\])]/gi,'');
+  t=t.replace(/\s*[\[(][^\])]*(blu-?ray|dvd|4k|uhd|ultra\s*hd|digital|combo|steelbook|widescreen|special edition|collector|ultraviolet|\d+\s*discs?)[^\])]*[\])]/gi,'');
   var trail=/(?:[\s\-\u2013:,+&\/]*(?:4k(?:\s*ultra\s*hd)?|ultra\s*hd|uhd|blu-?ray|bd|dvd|digital(?:\s*(?:code|copy|hd))?|combo(?:\s*pack)?|\d+-?disc(?:\s*set)?))+\s*$/gi;
   t=t.replace(trail,'');
+  t=t.replace(/\s*[\[(]\s*(?:19|20)\d\d\s*[\])]/g,'');
   return t.replace(/\s{2,}/g,' ').replace(/[\s\-\u2013:,+&\/]+$/,'').trim();
 }
 function lookupErr(reason){var e=new Error(reason);e.reason=reason;return e}
-async function lookupUpc(upc){
+var upcInflight={},NF_TTL=6*3600*1000,UPC_CACHE_MAX=400;
+function upcCachePut(cache,upc,val){
+  cache[upc]=val;
+  var keys=Object.keys(cache);
+  if(keys.length>UPC_CACHE_MAX){ /* keep the newest entries so localStorage never fills up */
+    keys.sort(function(a,b){return (cache[a].at||0)-(cache[b].at||0)}).slice(0,keys.length-UPC_CACHE_MAX).forEach(function(k){delete cache[k]});
+  }
+  lsSet(K_UPC,cache);
+}
+/* one relay call per barcode: results are cached on the phone, repeated scans never hit the network,
+   and a second scan of the same code while the first is still loading shares the same request */
+function lookupUpc(upc){
   var cache=ls(K_UPC,{}),c=cache[upc];
-  if(c)return c;
+  if(c&&c.nf){if(Date.now()-c.nf<NF_TTL)return Promise.reject(lookupErr('notfound'));delete cache[upc]}
+  else if(c&&c.title!==undefined)return Promise.resolve(c);
+  if(upcInflight[upc])return upcInflight[upc];
+  var p=lookupUpcNet(upc,cache);
+  upcInflight[upc]=p;
+  var done=function(){delete upcInflight[upc]};p.then(done,done);
+  return p;
+}
+async function lookupUpcNet(upc,cache){
   var r,d=null;
   try{
-    var ctl=window.AbortController?new AbortController():null,t=setTimeout(function(){ctl&&ctl.abort()},12000);
+    var ctl=window.AbortController?new AbortController():null,t=setTimeout(function(){ctl&&ctl.abort()},20000);
     try{r=await fetch(workerUrl(upc),ctl?{signal:ctl.signal}:{})}finally{clearTimeout(t)}
   }catch(e){throw lookupErr('network')}
   try{d=await r.json()}catch(e){}
   if(r.status===429||(d&&d.error==='rate_limited'))throw lookupErr('limit');
   if(!r.ok||!d)throw lookupErr('failed');
-  if(!d.found)throw lookupErr('notfound');
+  if(!d.found){upcCachePut(cache,upc,{nf:Date.now(),at:Date.now()});throw lookupErr('notfound')}
   var raw=d.rawTitle||d.title||'';
   var out={title:cleanTitle(d.title||raw)||d.title||raw,raw:raw,brand:d.brand||'',
     formats:(d.formats&&d.formats.length)?sortFormats(d.formats):detectFormats(raw),
-    year:((String(raw).match(/\((\d{4})\)/)||[])[1])||'',image:(d.images&&d.images[0])||''};
-  cache[upc]=out;lsSet(K_UPC,cache);return out;
+    year:d.year||((String(raw).match(/[\[(]\s*((?:19|20)\d\d)\s*[\])]/)||[])[1])||'',image:(d.images&&d.images[0])||'',at:Date.now()};
+  upcCachePut(cache,upc,out);return out;
 }
 function checkUpc(text){
   var upc=String(text).replace(/\D/g,''),R=$('scanResult');clear(R);
@@ -1623,9 +1643,13 @@ function checkUpc(text){
     scanForm(R,upc,info,null);scroll();
   },function(err){
     clear(R);
-    var why={limit:'The free barcode lookup is out of requests for now (the trial allows about 100 per day).',notfound:'That barcode isn’t in the free lookup database.',failed:'The barcode lookup service returned an error.'}[err.reason]||'The barcode lookup service couldn’t be reached.';
-    R.appendChild(banner('new','Not in library','UPC '+upc));
-    scanForm(R,upc,{title:'',formats:[],year:''},why+' Type the title, or search for it by name.');scroll();
+    var why={limit:'The free barcode lookup service is busy right now. It is shared with lots of other apps, so this has nothing to do with how many scans you’ve done.',notfound:'That barcode isn’t in the free lookup databases.',failed:'The barcode lookup service had a problem.'}[err.reason]||'Couldn’t reach the barcode lookup service. Check your connection.';
+    var nb=banner('new','Not in library','UPC '+upc);R.appendChild(nb);
+    var row=el('div','row'),st=el('button','primary','🔎 Search by title'),again=el('button',null,'Try again');
+    st.onclick=function(){closeSheet('sheetScan');stopScan();var q=$('q');q.focus()};
+    again.onclick=function(){checkUpc(upc)};
+    row.appendChild(st);if(err.reason!=='notfound')row.appendChild(again);nb.appendChild(row);
+    scanForm(R,upc,{title:'',formats:[],year:''},why+' You can type the title below, or use Search by title.');scroll();
   });
 }
 function scanForm(R,upc,info,msg){
@@ -1831,7 +1855,7 @@ function init(){
     window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){})});
   }
 }
-window.MC={activeFilterCount:activeFilterCount,resetFilters:resetFilters,coverSrc:coverSrc,setCover:setCover,removeCover:removeCover,downscaleImage:downscaleImage,openCover:openCover,googleImagesUrl:googleImagesUrl,coverCsvUrl:coverCsvUrl,coverUrls:coverUrls,startCamera:startCamera,stopCamera:stopCamera,decodePhoto:decodePhoto,lookupUpc:lookupUpc,workerUrl:workerUrl,cam:cam,norm:norm,score:score,searchLocal:searchLocal,ownedFor:ownedFor,seriesOf:seriesOf,siblings:siblings,parseCSV:parseCSV,rowsFromTable:rowsFromTable,mergeRows:mergeRows,normFormat:normFormat,parseFormats:parseFormats,detectFormats:detectFormats,normUpc:normUpc,cleanUpc:cleanUpc,parseUpcs:parseUpcs,cleanTitle:cleanTitle,toCSV:toCSV,importFile:importFile,importBuffer:importBuffer,checkUpc:checkUpc,sheetCsvUrl:sheetCsvUrl,db:db,render:render,state:state,STRONG:STRONG,Providers:Providers,findByUpc:findByUpc,addOrMerge:addOrMerge,migrateItems:migrateItems,enrichItem:enrichItem,pickBest:pickBest,parseDetails:parseDetails,Q:Q,fillAll:fillAll,passFilters:passFilters,sortItems:sortItems,openDetail:openDetail,setDelay:function(n){enrichDelay=n},getCollection:getCollection,saveNow:saveNow};
+window.MC={upcInflight:upcInflight,activeFilterCount:activeFilterCount,resetFilters:resetFilters,coverSrc:coverSrc,setCover:setCover,removeCover:removeCover,downscaleImage:downscaleImage,openCover:openCover,googleImagesUrl:googleImagesUrl,coverCsvUrl:coverCsvUrl,coverUrls:coverUrls,startCamera:startCamera,stopCamera:stopCamera,decodePhoto:decodePhoto,lookupUpc:lookupUpc,workerUrl:workerUrl,cam:cam,norm:norm,score:score,searchLocal:searchLocal,ownedFor:ownedFor,seriesOf:seriesOf,siblings:siblings,parseCSV:parseCSV,rowsFromTable:rowsFromTable,mergeRows:mergeRows,normFormat:normFormat,parseFormats:parseFormats,detectFormats:detectFormats,normUpc:normUpc,cleanUpc:cleanUpc,parseUpcs:parseUpcs,cleanTitle:cleanTitle,toCSV:toCSV,importFile:importFile,importBuffer:importBuffer,checkUpc:checkUpc,sheetCsvUrl:sheetCsvUrl,db:db,render:render,state:state,STRONG:STRONG,Providers:Providers,findByUpc:findByUpc,addOrMerge:addOrMerge,migrateItems:migrateItems,enrichItem:enrichItem,pickBest:pickBest,parseDetails:parseDetails,Q:Q,fillAll:fillAll,passFilters:passFilters,sortItems:sortItems,openDetail:openDetail,setDelay:function(n){enrichDelay=n},getCollection:getCollection,saveNow:saveNow};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
