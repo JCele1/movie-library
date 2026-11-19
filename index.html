@@ -95,6 +95,7 @@ a{color:var(--accent)}
 .srow .st strong,.srow .st small{display:block}.srow .st small{color:var(--muted);font-size:13px}
 .filters select{flex:1 1 40%;min-width:0;min-height:44px;padding:6px 8px;font-size:16px;border-radius:12px}
 .filters button{min-height:44px;width:48px;padding:0}
+.filters button.reset{width:100%;padding:0 14px;background:var(--accent);color:var(--accent-text);border-color:transparent;font-weight:600}
 .enrich{display:none;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:10px;font-size:14px}
 .enrich .prog{flex:1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
 .enrich .prog i{display:block;height:100%;width:0;background:var(--accent)}
@@ -169,6 +170,7 @@ a{color:var(--accent)}
       <option value="added">Sort: Recently added</option>
     </select>
     <button id="fView" aria-label="Toggle grid or list">▦</button>
+    <button id="fReset" class="reset" aria-label="Reset all filters" style="display:none"></button>
   </div>
 </header>
 <main>
@@ -816,8 +818,30 @@ function renderFilterOptions(){
   var noTmdb=!db.items.some(function(i){return i.tmdb&&!i.tmdb.none});
   gs.style.display=rs.style.display=noTmdb?'none':'';
 }
+function activeFilterCount(){
+  var n=0;
+  if(state.q.trim())n++;
+  if(state.format!=='All')n++;
+  if(state.genre!=='All')n++;
+  if(state.rating!=='All')n++;
+  if((db.settings.sort||'title')!=='title')n++;
+  return n;
+}
+function updateReset(){
+  var n=activeFilterCount(),b=$('fReset');
+  b.style.display=n?'':'none';
+  b.textContent='↺ Reset filters ('+n+')';
+}
+function resetFilters(){
+  state.q='';state.format='All';state.genre='All';state.rating='All';
+  var q=$('q');q.value='';$('qclear').style.display='none';
+  db.settings.sort='title';saveSettings();
+  renderLibrary();scheduleOnline();
+  try{window.scrollTo(0,0)}catch(e){}
+  toast('Filters reset');
+}
 function renderLibrary(){
-  renderChips();renderFilterOptions();
+  renderChips();renderFilterOptions();updateReset();
   var q=state.q.trim(),B=$('banner'),L=$('list');clear(B);clear(L);
   var res=searchLocal(q);
   if(!q){
@@ -1748,6 +1772,7 @@ function init(){
   $('fGenre').onchange=function(){state.genre=this.value;renderLibrary()};
   $('fRating').onchange=function(){state.rating=this.value;renderLibrary()};
   $('fSort').onchange=function(){db.settings.sort=this.value;saveSettings();renderLibrary()};
+  $('fReset').onclick=resetFilters;
   $('fView').onclick=function(){db.settings.view=db.settings.view==='list'?'grid':'list';saveSettings();renderLibrary()};
   $('btnAdd').onclick=function(){openEdit(null,{title:state.q.trim()})};
   $('editClose').onclick=function(){closeSheet('sheetEdit')};
@@ -1806,7 +1831,7 @@ function init(){
     window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){})});
   }
 }
-window.MC={coverSrc:coverSrc,setCover:setCover,removeCover:removeCover,downscaleImage:downscaleImage,openCover:openCover,googleImagesUrl:googleImagesUrl,coverCsvUrl:coverCsvUrl,coverUrls:coverUrls,startCamera:startCamera,stopCamera:stopCamera,decodePhoto:decodePhoto,lookupUpc:lookupUpc,workerUrl:workerUrl,cam:cam,norm:norm,score:score,searchLocal:searchLocal,ownedFor:ownedFor,seriesOf:seriesOf,siblings:siblings,parseCSV:parseCSV,rowsFromTable:rowsFromTable,mergeRows:mergeRows,normFormat:normFormat,parseFormats:parseFormats,detectFormats:detectFormats,normUpc:normUpc,cleanUpc:cleanUpc,parseUpcs:parseUpcs,cleanTitle:cleanTitle,toCSV:toCSV,importFile:importFile,importBuffer:importBuffer,checkUpc:checkUpc,sheetCsvUrl:sheetCsvUrl,db:db,render:render,state:state,STRONG:STRONG,Providers:Providers,findByUpc:findByUpc,addOrMerge:addOrMerge,migrateItems:migrateItems,enrichItem:enrichItem,pickBest:pickBest,parseDetails:parseDetails,Q:Q,fillAll:fillAll,passFilters:passFilters,sortItems:sortItems,openDetail:openDetail,setDelay:function(n){enrichDelay=n},getCollection:getCollection,saveNow:saveNow};
+window.MC={activeFilterCount:activeFilterCount,resetFilters:resetFilters,coverSrc:coverSrc,setCover:setCover,removeCover:removeCover,downscaleImage:downscaleImage,openCover:openCover,googleImagesUrl:googleImagesUrl,coverCsvUrl:coverCsvUrl,coverUrls:coverUrls,startCamera:startCamera,stopCamera:stopCamera,decodePhoto:decodePhoto,lookupUpc:lookupUpc,workerUrl:workerUrl,cam:cam,norm:norm,score:score,searchLocal:searchLocal,ownedFor:ownedFor,seriesOf:seriesOf,siblings:siblings,parseCSV:parseCSV,rowsFromTable:rowsFromTable,mergeRows:mergeRows,normFormat:normFormat,parseFormats:parseFormats,detectFormats:detectFormats,normUpc:normUpc,cleanUpc:cleanUpc,parseUpcs:parseUpcs,cleanTitle:cleanTitle,toCSV:toCSV,importFile:importFile,importBuffer:importBuffer,checkUpc:checkUpc,sheetCsvUrl:sheetCsvUrl,db:db,render:render,state:state,STRONG:STRONG,Providers:Providers,findByUpc:findByUpc,addOrMerge:addOrMerge,migrateItems:migrateItems,enrichItem:enrichItem,pickBest:pickBest,parseDetails:parseDetails,Q:Q,fillAll:fillAll,passFilters:passFilters,sortItems:sortItems,openDetail:openDetail,setDelay:function(n){enrichDelay=n},getCollection:getCollection,saveNow:saveNow};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>

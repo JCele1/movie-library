@@ -1,6 +1,6 @@
 /* Movie Check service worker: cache-first for this app's own files (offline after first load).
    Cross-origin requests (UPC lookup, title search, Google Sheets, CDN fallbacks) are never touched. */
-const CACHE = 'movie-check-v4';
+const CACHE = 'movie-check-v5';
 const ASSETS = [
   './', 'index.html', 'manifest.json', 'template.csv',
   'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png',
